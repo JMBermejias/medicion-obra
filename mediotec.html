@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0288D1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Medicion Obra">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Control de Medicion - Obra</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--primary:#4FC3F7;--primary-dark:#0288D1;--primary-light:#B3E5FC;
+--accent:#29B6F6;--bg:#E1F5FE;--card:#ffffff;--text:#212121;
+--text-light:#757575;--border:#B3E5FC;--success:#66BB6A;
+--warning:#FFA726;--danger:#EF5350;--shadow:0 4px 20px rgba(2,136,209,0.15);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;background:linear-gradient(180deg,var(--primary-dark),var(--primary));color:#fff;padding:20px 0;position:fixed;height:100vh;overflow-y:auto;z-index:100;transition:transform .3s}
+.sidebar h2{padding:10px 20px 25px;font-size:1.1rem;border-bottom:1px solid rgba(255,255,255,0.15);text-align:center}
+.sidebar h2 span{display:block;font-size:.75rem;color:var(--border);margin-top:4px}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 20px;border:none;background:transparent;color:#fff;cursor:pointer;font-size:.9rem;transition:all .2s;text-align:left}
+.nav-btn:hover,.nav-btn.active{background:rgba(255,255,255,0.15)}
+.nav-btn .icon{width:20px;text-align:center;font-size:1.1rem}
+.main{margin-left:260px;flex:1;padding:30px;max-width:1200px}
+.page{display:none;animation:fadeIn .3s}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:10px}
+.page-header h1{font-size:1.6rem;color:var(--primary-dark)}
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#43A047}
+.btn-warning{background:var(--warning);color:#fff}.btn-warning:hover{background:#FB8C00}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#E53935}
+.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}.btn-outline:hover{background:var(--primary);color:#fff}
+.card{background:var(--card);border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+.grid{display:grid;gap:20px}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.grid-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.grid-5{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.stat-card{text-align:center;padding:25px 15px;border-radius:12px;color:#fff}
+.stat-card.elec{background:linear-gradient(135deg,#4FC3F7,#29B6F6)}
+.stat-card.pci{background:linear-gradient(135deg,#EF5350,#E53935)}
+.stat-card.font{background:linear-gradient(135deg,#66BB6A,#43A047)}
+.stat-card.clim{background:linear-gradient(135deg,#FFA726,#FB8C00)}
+.stat-card .stat-icon{font-size:2rem;margin-bottom:8px}
+.stat-card .stat-value{font-size:1.8rem;font-weight:700}
+.stat-card .stat-label{font-size:.8rem;opacity:.9;margin-top:4px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:.85rem}
+th{background:var(--primary);color:#fff;font-weight:600;position:sticky;top:0}
+tr:hover{background:rgba(79,195,247,0.05)}
+.table-wrap{max-height:400px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)}
+.form-group{margin-bottom:15px}
+.form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-light);margin-bottom:5px;text-transform:uppercase}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary);outline:none}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:25px;width:90%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h3{color:var(--primary-dark);margin-bottom:20px;font-size:1.2rem}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;color:#fff}
+.tag-elec{background:#4FC3F7}.tag-pci{background:#EF5350}.tag-font{background:#66BB6A}.tag-clim{background:#FFA726}
+.tag-cal{background:#29B6F6}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:.85rem}
+.chart-bar{display:flex;align-items:flex-end;gap:8px;height:200px;padding:10px 0}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.chart-col .bar{width:100%;min-width:30px;border-radius:6px 6px 0 0;transition:height .5s}
+.chart-col .bar-label{font-size:.65rem;color:var(--text-light);writing-mode:vertical-lr;text-orientation:mixed;max-height:60px;overflow:hidden}
+.chart-col .bar-value{font-size:.7rem;font-weight:600}
+.empty-state{text-align:center;padding:40px;color:var(--text-light)}
+.empty-state .empty-icon{font-size:3rem;margin-bottom:10px}
+.print-header{display:none}
+@media print{.sidebar,.btn,.no-print{display:none!important}.main{margin-left:0!important;padding:10px!important}.print-header{display:block!important}.page{display:block!important}}
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block!important}}
+.menu-toggle{display:none;position:fixed;top:15px;left:15px;z-index:150;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:1.2rem;cursor:pointer}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--success);color:#fff;padding:12px 20px;border-radius:8px;font-size:.85rem;z-index:300;animation:slideUp .3s;display:none}
+.toast.show{display:block}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:15px}
+.chip{padding:5px 14px;border-radius:20px;border:2px solid var(--border);background:#fff;cursor:pointer;font-size:.8rem;transition:all .2s}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.chip:hover{border-color:var(--primary)}
+.mat-thumb{width:45px;height:45px;object-fit:contain;border-radius:6px;background:#f5f5f5;border:1px solid var(--border);flex-shrink:0}
+.mat-name-cell{display:flex;align-items:center;gap:10px}
+.mat-name-text{flex:1;min-width:0}
+.mat-name-text strong{display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quote-line{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.quote-line:last-child{border-bottom:none}
+.quote-line input,.quote-line select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:.8rem}
+.quote-line input[type=number]{width:80px}
+.quote-line .ql-desc{flex:1;min-width:120px}
+.quote-line .ql-cant{width:70px}
+.quote-line .ql-sub{width:90px;text-align:right;font-weight:600;font-size:.85rem}
+.quote-summary{text-align:right;padding:15px 0;border-top:2px solid var(--primary);margin-top:10px}
+.quote-summary div{display:flex;justify-content:flex-end;gap:10px;padding:4px 0;font-size:.9rem}
+.quote-summary .total-line{font-size:1.1rem;font-weight:700;color:var(--primary-dark);border-top:2px solid var(--primary);padding-top:8px}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600;color:#fff}
+.status-borrador{background:var(--warning)}
+.status-enviado{background:var(--primary)}
+.status-aceptado{background:var(--success)}
+.status-rechazado{background:var(--danger)}
+.detail-view{padding:20px 0}
+.detail-row{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.detail-row .dr-label{width:140px;font-size:.8rem;color:var(--text-light);font-weight:600}
+.detail-row .dr-value{flex:1;font-size:.85rem}
+.prv-link{color:var(--primary);font-size:.75rem;cursor:pointer;text-decoration:underline}
+.search-picker{position:relative}
+.search-picker input{width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:.85rem}
+.search-picker input:focus{border-color:var(--primary);outline:none}
+.search-picker-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:250;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.search-picker-results.show{display:block}
+.search-picker-item{padding:8px 12px;cursor:pointer;font-size:.8rem;border-bottom:1px solid #f0f0f0;display:flex;align-items:center}
+.search-picker-item:hover{background:var(--bg)}
+.search-picker-item .spi-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.search-picker-item .spi-thumb{width:36px;height:36px;object-fit:contain;border-radius:4px;background:#f5f5f5;border:1px solid var(--border);flex-shrink:0}
+.search-picker-item .spi-info{flex:1;min-width:0}
+.search-picker-item .spi-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-picker-item .spi-meta{color:var(--text-light);font-size:.7rem;margin-top:2px}
+.search-picker-selected{font-size:.8rem;color:var(--primary);font-weight:600;margin-top:4px;cursor:pointer}
+.report-card{text-align:center;padding:30px}
+.report-card .icon{font-size:2.5rem;margin-bottom:10px}
+.report-card h3{color:var(--primary-dark);margin-bottom:15px}
+.report-card p{font-size:.85rem;color:var(--text-light);margin-bottom:20px}
+.export-btn{margin:5px}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+
+<div class="app">
+<aside class="sidebar">
+<h2>&#128295; Control de Obra<span>Sistema de Medicion</span></h2>
+<button class="nav-btn active" onclick="showPage('dashboard')"><span class="icon">&#128202;</span>Panel Principal</button>
+<button class="nav-btn" onclick="showPage('empresas')"><span class="icon">&#127970;</span>Empresas Instaladoras</button>
+<button class="nav-btn" onclick="showPage('materiales')"><span class="icon">&#128230;</span>Materiales</button>
+<button class="nav-btn" onclick="showPage('mediciones')"><span class="icon">&#128221;</span>Mediciones</button>
+<button class="nav-btn" onclick="showPage('estadisticas')"><span class="icon">&#128200;</span>Estadisticas</button>
+<button class="nav-btn" onclick="showPage('reportes')"><span class="icon">&#128196;</span>Reportes / PDF</button>
+</aside>
+
+<main class="main">
+<div class="print-header"><h1>Control de Medicion - Obra</h1><hr style="margin:10px 0"></div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+<div class="page-header"><h1>&#128202; Panel Principal</h1></div>
+<div class="grid grid-5" id="stats-cards"></div>
+<div class="grid grid-2" style="margin-top:20px">
+<div class="card">
+<h3 style="color:var(--primary-dark);margin-bottom:15px">Mediciones Recientes</h3>
+<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Empresa</th></tr></thead><tbody id="recent-list"></tbody></table></div>
+</div>
+<div class="card">
+<h3 style="color:var(--primary-dark);margin-bottom:15px">Materiales por Categoria</h3>
+<div id="cat-bars" style="padding:10px"></div>
+</div>
+</div>
+</div>
+
+<!-- EMPRESAS INSTALADORAS -->
+<div id="page-empresas" class="page">
+<div class="page-header">
+<h1>&#127970; Empresas Instaladoras</h1>
+<button class="btn btn-primary" onclick="openEmpresaModal()">+ Nueva Empresa</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px">
+<input type="text" id="emp-search" placeholder="Buscar empresa..." oninput="renderEmpresas()" style="flex:1;min-width:200px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;font-size:.85rem;outline:none">
+</div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Nombre</th><th>Especialidad</th><th>Contacto</th><th>Telefono</th><th>Email</th><th>Acciones</th></tr></thead>
+<tbody id="empresas-list"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- MATERIALES -->
+<div id="page-materiales" class="page">
+<div class="page-header">
+<h1>&#128230; Base de Datos de Materiales</h1>
+<button class="btn btn-primary" onclick="openMaterialModal()">+ Nuevo Material</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px">
+<input type="text" id="mat-search" placeholder="Buscar material..." oninput="renderMaterials()" style="flex:1;min-width:200px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;font-size:.85rem;outline:none">
+</div>
+<div class="filter-chips" id="mat-filters"></div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Nombre</th><th>Categoria</th><th>Unidad</th><th>Acciones</th></tr></thead>
+<tbody id="materials-list"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- MEDICIONES -->
+<div id="page-mediciones" class="page">
+<div class="page-header">
+<h1>&#128221; Registro de Mediciones</h1>
+<div style="display:flex;gap:10px">
+<button class="btn btn-success" onclick="exportMedicionesExcel()">&#128202; Exportar Excel</button>
+<button class="btn btn-primary" onclick="openMedicionModal()">+ Nueva Medicion</button>
+</div>
+</div>
+<div class="filters" style="margin-bottom:15px">
+<input type="month" id="filter-mes" onchange="renderMediciones()">
+<select id="filter-empresa-med" onchange="renderMediciones()"><option value="">Todas las empresas</option></select>
+<select id="filter-cat-med" onchange="renderMediciones()"><option value="">Todas las categorias</option><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option></select>
+</div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Fecha</th><th>Empresa</th><th>Material</th><th>Categoria</th><th>Cantidad</th><th>Unidad</th><th>Acciones</th></tr></thead>
+<tbody id="mediciones-list"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- ESTADISTICAS -->
+<div id="page-estadisticas" class="page">
+<div class="page-header"><h1>&#128200; Estadisticas</h1>
+<div class="filters">
+<select id="stat-period" onchange="renderEstadisticas()"><option value="day">Diario</option><option value="month" selected>Mensual</option><option value="year">Anual</option></select>
+<select id="stat-cat" onchange="renderEstadisticas()"><option value="">Todas</option><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI</option></select>
+</div>
+</div>
+<div class="grid grid-4" id="stat-summary"></div>
+<div class="card" style="margin-top:20px">
+<h3 style="color:var(--primary-dark);margin-bottom:15px" id="chart-title">Mediciones Mensuales</h3>
+<div id="chart-container"></div>
+</div>
+<div class="grid grid-2" style="margin-top:20px">
+<div class="card">
+<h3 style="color:var(--primary-dark);margin-bottom:15px">Por Categoria</h3>
+<div id="cat-pie"></div>
+</div>
+<div class="card">
+<h3 style="color:var(--primary-dark);margin-bottom:15px">Top Materiales</h3>
+<div id="top-materials"></div>
+</div>
+</div>
+</div>
+
+<!-- REPORTES -->
+<div id="page-reportes" class="page">
+<div class="page-header"><h1>&#128196; Reportes y Exportacion</h1></div>
+<div class="grid grid-3">
+<div class="card report-card">
+<div class="icon">&#128197;</div>
+<h3>Reporte Diario</h3>
+<p>Listado de mediciones del dia seleccionado</p>
+<input type="date" id="rpt-day-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<br><button class="btn btn-primary" onclick="generatePDF('day')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('day')">&#128202; Excel</button>
+</div>
+<div class="card report-card">
+<div class="icon">&#128198;</div>
+<h3>Reporte Semanal</h3>
+<p>Mediciones de una semana completa</p>
+<input type="date" id="rpt-week-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<br><button class="btn btn-primary" onclick="generatePDF('week')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('week')">&#128202; Excel</button>
+</div>
+<div class="card report-card">
+<div class="icon">&#128197;</div>
+<h3>Reporte Mensual</h3>
+<p>Todas las mediciones de un mes</p>
+<input type="month" id="rpt-month-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<br><button class="btn btn-primary" onclick="generatePDF('month')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('month')">&#128202; Excel</button>
+</div>
+</div>
+<div class="grid grid-2" style="margin-top:20px">
+<div class="card report-card">
+<div class="icon">&#128200;</div>
+<h3>Reporte Anual</h3>
+<p>Resumen completo de todo el anio</p>
+<select id="rpt-year" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"></select>
+<br><button class="btn btn-primary" onclick="generatePDF('year')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('year')">&#128202; Excel</button>
+</div>
+<div class="card report-card">
+<div class="icon">&#128230;</div>
+<h3>Listado de Materiales</h3>
+<p>Inventario completo de materiales</p>
+<button class="btn btn-primary" onclick="generatePDF('materials')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('materials')">&#128202; Excel</button>
+</div>
+<div class="card report-card">
+<div class="icon">&#128196;</div>
+<h3>Medicion por Empresa</h3>
+<p>Listado de mediciones por empresa instaladora</p>
+<select id="rpt-empresa" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Seleccionar empresa</option></select>
+<br><button class="btn btn-primary" onclick="generatePDF('empresa')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('empresa')">&#128202; Excel</button>
+</div>
+</div>
+</div>
+
+
+</main>
+</div>
+
+<!-- MODAL EMPRESA -->
+<div class="modal-overlay" id="modal-empresa">
+<div class="modal">
+<h3 id="emp-modal-title">Nueva Empresa Instaladora</h3>
+<input type="hidden" id="emp-edit-id">
+<div class="form-group"><label>Nombre de la Empresa *</label><input type="text" id="emp-nombre" placeholder="Nombre de la empresa"></div>
+<div class="form-group"><label>Especialidad</label><select id="emp-especialidad"><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option><option value="General">General / Multi-speciality</option></select></div>
+<div class="form-group"><label>Contacto</label><input type="text" id="emp-contacto" placeholder="Nombre del contacto"></div>
+<div class="form-group"><label>NIF/CIF</label><input type="text" id="emp-nif" placeholder="12345678A"></div>
+<div class="form-group"><label>Direccion</label><input type="text" id="emp-direccion" placeholder="Direccion completa"></div>
+<div class="form-group"><label>Telefono</label><input type="text" id="emp-telefono" placeholder="600 000 000"></div>
+<div class="form-group"><label>Email</label><input type="email" id="emp-email" placeholder="email@ejemplo.com"></div>
+<div class="form-group"><label>Notas</label><input type="text" id="emp-notas" placeholder="Observaciones"></div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-empresa')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveEmpresa()">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- MODAL MATERIAL -->
+<div class="modal-overlay" id="modal-material">
+<div class="modal">
+<h3 id="mat-modal-title">Nuevo Material</h3>
+<input type="hidden" id="mat-edit-id">
+<input type="hidden" id="mat-img-data">
+<div class="form-group"><label>Nombre</label><input type="text" id="mat-nombre" placeholder="Ej: Cable 2.5mm"></div>
+<div class="form-group"><label>Categoria</label><select id="mat-categoria"><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option></select></div>
+<div class="form-group"><label>Unidad</label><select id="mat-unidad"><option value="ml">Metros (ml)</option><option value="m2">Metros cuadrados (m2)</option><option value="m3">Metros cubicos (m3)</option><option value="ud">Unidad (ud)</option><option value="kg">Kilogramos (kg)</option><option value="l">Litros (l)</option><option value="bulto">Bulto</option><option value="caja">Caja</option><option value="rollo">Rollo</option><option value="juego">Juego</option><option value="par">Par</option><option value="set">Set</option></select></div>
+<div class="form-group"><label>Descripcion (opcional)</label><input type="text" id="mat-desc" placeholder="Descripcion breve"></div>
+<div class="form-group"><label>Imagen del Material</label>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<button type="button" class="btn btn-primary" onclick="document.getElementById('mat-img-file').click()" style="font-size:.8rem;padding:6px 12px">&#128193; Desde archivo</button>
+<button type="button" class="btn btn-success" onclick="document.getElementById('mat-img-camera').click()" style="font-size:.8rem;padding:6px 12px">&#128247; Tomar foto</button>
+<button type="button" class="btn btn-danger" onclick="clearMaterialImage()" style="font-size:.8rem;padding:6px 12px" id="mat-img-clear-btn" >X Quitar</button>
+</div>
+<input type="file" id="mat-img-file" accept="image/*" style="display:none" onchange="handleMatImage(event,'file')">
+<input type="file" id="mat-img-camera" accept="image/*" capture="environment" style="display:none" onchange="handleMatImage(event,'camera')">
+<div id="mat-img-preview" style="margin-top:10px;display:none;text-align:center">
+<img id="mat-img-thumb" src="" style="max-width:150px;max-height:150px;border-radius:8px;border:2px solid var(--border);object-fit:contain">
+<p id="mat-img-name" style="font-size:.75rem;color:var(--text-light);margin-top:5px"></p>
+</div>
+</div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-material')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveMaterial()">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- MODAL MEDICION -->
+<div class="modal-overlay" id="modal-medicion">
+<div class="modal" style="max-width:650px">
+<h3 id="med-modal-title">Nueva Medicion</h3>
+<input type="hidden" id="med-edit-id">
+<div class="form-group"><label>Fecha</label><input type="date" id="med-fecha"></div>
+<div class="form-group"><label>Empresa Instaladora *</label><select id="med-empresa"></select></div>
+<div style="background:#E1F5FE;border-radius:8px;padding:12px;margin-bottom:10px">
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+<div style="flex:1;min-width:200px" class="search-picker">
+<input type="text" id="med-mat-search" placeholder="Buscar material por nombre..." autocomplete="off" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:.85rem">
+<div class="search-picker-results" id="med-mat-results"></div>
+</div>
+<select id="med-cat" onchange="filterMaterialsForMedicion()" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:.85rem"><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option></select>
+</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<select id="med-material" style="flex:1;min-width:180px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:.85rem"></select>
+<input type="number" id="med-cantidad" step="0.01" min="0" placeholder="Cantidad" style="width:90px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:.85rem">
+<button class="btn btn-success" onclick="addMedicionLine()" style="white-space:nowrap;padding:8px 14px">+ Agregar</button>
+</div>
+</div>
+<div id="med-lineas" style="max-height:200px;overflow-y:auto;margin-bottom:10px"></div>
+<div style="display:flex;justify-content:flex-end;align-items:center">
+<div class="form-group" style="margin:0;flex:1;max-width:250px"><label>Observaciones</label><input type="text" id="med-obs" placeholder="Opcional"></div>
+</div>
+<div class="modal-actions" style="margin-top:15px">
+<button class="btn btn-outline" onclick="closeModal('modal-medicion')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveMedicion()">Guardar Medicion</button>
+</div>
+</div>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+let materials = JSON.parse(localStorage.getItem('mat_data') || '[]');
+let mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
+let matFilter = 'all';
+let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
+let tempMedicionLineas = [];
+
+const _iconCache={};
+function getMaterialImg(m){
+if(m.img)return m.img;
+return _getIcon(m.categoria,m.nombre);
+}
+
+function save(){
+  localStorage.setItem('mat_data',JSON.stringify(materials));
+  localStorage.setItem('med_data',JSON.stringify(mediciones));
+  localStorage.setItem('emp_data',JSON.stringify(empresas));
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+function showPage(id){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+document.getElementById('page-'+id).classList.add('active');
+document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+const pages=['dashboard','empresas','materiales','mediciones','estadisticas','reportes'];
+const idx=pages.indexOf(id);
+if(idx>=0)document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+document.querySelector('.sidebar').classList.remove('open');
+if(id==='dashboard')renderDashboard();
+if(id==='empresas')renderEmpresas();
+if(id==='materiales')renderMaterials();
+if(id==='mediciones')renderMediciones();
+if(id==='estadisticas')renderEstadisticas();
+}
+
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+function openEmpresaModal(id){
+document.getElementById('emp-edit-id').value='';
+document.getElementById('emp-modal-title').textContent='Nueva Empresa Instaladora';
+document.getElementById('emp-nombre').value='';
+document.getElementById('emp-especialidad').value='Electricidad';
+document.getElementById('emp-contacto').value='';
+document.getElementById('emp-nif').value='';
+document.getElementById('emp-direccion').value='';
+document.getElementById('emp-telefono').value='';
+document.getElementById('emp-email').value='';
+document.getElementById('emp-notas').value='';
+openModal('modal-empresa');
+}
+
+function editEmpresa(id){
+const e=empresas.find(x=>x.id===id);
+document.getElementById('emp-edit-id').value=id;
+document.getElementById('emp-modal-title').textContent='Editar Empresa';
+document.getElementById('emp-nombre').value=e.nombre;
+document.getElementById('emp-especialidad').value=e.especialidad;
+document.getElementById('emp-contacto').value=e.contacto||'';
+document.getElementById('emp-nif').value=e.nif||'';
+document.getElementById('emp-direccion').value=e.direccion||'';
+document.getElementById('emp-telefono').value=e.telefono||'';
+document.getElementById('emp-email').value=e.email||'';
+document.getElementById('emp-notas').value=e.notas||'';
+openModal('modal-empresa');
+}
+
+function saveEmpresa(){
+const nombre=document.getElementById('emp-nombre').value.trim();
+if(!nombre){alert('Introduce un nombre de empresa');return}
+const data={nombre,especialidad:document.getElementById('emp-especialidad').value,contacto:document.getElementById('emp-contacto').value.trim(),nif:document.getElementById('emp-nif').value.trim(),direccion:document.getElementById('emp-direccion').value.trim(),telefono:document.getElementById('emp-telefono').value.trim(),email:document.getElementById('emp-email').value.trim(),notas:document.getElementById('emp-notas').value.trim()};
+const editId=document.getElementById('emp-edit-id').value;
+if(editId){const idx=empresas.findIndex(x=>x.id===editId);empresas[idx]={...empresas[idx],...data}}
+else{data.id='emp_'+Date.now();data.fechaCreacion=new Date().toISOString().split('T')[0];empresas.push(data)}
+save();closeModal('modal-empresa');renderEmpresas();toast('Empresa guardada');
+}
+
+function deleteEmpresa(id){
+if(!confirm('Eliminar esta empresa?'))return;
+empresas=empresas.filter(x=>x.id!==id);
+save();renderEmpresas();toast('Empresa eliminada');
+}
+
+function renderEmpresas(){
+const q=(document.getElementById('emp-search')?.value||'').toLowerCase();
+const list=empresas.filter(e=>!q||e.nombre.toLowerCase().includes(q)||(e.especialidad||'').toLowerCase().includes(q)||(e.contacto||'').toLowerCase().includes(q));
+document.getElementById('empresas-list').innerHTML=list.length?list.map(e=>`<tr>
+<td><strong>${e.nombre}</strong></td>
+<td><span class="tag tag-${e.especialidad==='Electricidad'?'elec':e.especialidad==='PCI'?'pci':e.especialidad==='Fontaneria'?'font':e.especialidad==='Climatizacion'?'clim':'cal'}">${e.especialidad}</span></td>
+<td>${e.contacto||'-'}</td><td>${e.telefono||'-'}</td><td>${e.email||'-'}</td>
+<td><button class="btn btn-warning" onclick="editEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay empresas registradas</td></tr>';
+}
+
+function openMaterialModal(id){
+document.getElementById('mat-edit-id').value='';
+document.getElementById('mat-modal-title').textContent='Nuevo Material';
+document.getElementById('mat-nombre').value='';
+document.getElementById('mat-categoria').value='Electricidad';
+document.getElementById('mat-unidad').value='ud';
+document.getElementById('mat-desc').value='';
+document.getElementById('mat-img-data').value='';
+document.getElementById('mat-img-file').value='';
+document.getElementById('mat-img-camera').value='';
+document.getElementById('mat-img-preview').style.display='none';
+openModal('modal-material');
+}
+
+function editMaterial(id){
+const m=materials.find(x=>x.id===id);
+document.getElementById('mat-edit-id').value=id;
+document.getElementById('mat-modal-title').textContent='Editar Material';
+document.getElementById('mat-nombre').value=m.nombre;
+document.getElementById('mat-categoria').value=m.categoria;
+document.getElementById('mat-unidad').value=m.unidad;
+document.getElementById('mat-desc').value=m.desc||'';
+document.getElementById('mat-img-data').value=m.img||'';
+document.getElementById('mat-img-file').value='';
+document.getElementById('mat-img-camera').value='';
+const preview=document.getElementById('mat-img-preview');
+if(m.img){
+document.getElementById('mat-img-thumb').src=m.img;
+document.getElementById('mat-img-name').textContent='Imagen actual';
+preview.style.display='block';
+}else{
+document.getElementById('mat-img-thumb').src=getMaterialImg(m);
+document.getElementById('mat-img-name').textContent='Icono auto-generado (sube una foto para personalizar)';
+preview.style.display='block';
+}
+openModal('modal-material');
+}
+
+function handleMatImage(event,source){
+const file=event.target.files[0];
+if(!file)return;
+if(file.size>5*1024*1024){alert('La imagen no puede superar 5MB');event.target.value='';return}
+const reader=new FileReader();
+reader.onload=function(e){
+const img=new Image();
+img.onload=function(){
+const canvas=document.createElement('canvas');
+const maxSize=400;
+let w=img.width,h=img.height;
+if(w>maxSize||h>maxSize){
+if(w>h){h=Math.round(h*maxSize/w);w=maxSize}
+else{w=Math.round(w*maxSize/h);h=maxSize}
+}
+canvas.width=w;canvas.height=h;
+canvas.getContext('2d').drawImage(img,0,0,w,h);
+const dataUrl=canvas.toDataURL('image/jpeg',0.8);
+document.getElementById('mat-img-data').value=dataUrl;
+document.getElementById('mat-img-thumb').src=dataUrl;
+document.getElementById('mat-img-name').textContent='Foto capturada ('+w+'x'+h+')';
+document.getElementById('mat-img-preview').style.display='block';
+};
+img.src=e.target.result;
+};
+reader.readAsDataURL(file);
+}
+
+function clearMaterialImage(){
+document.getElementById('mat-img-data').value='';
+document.getElementById('mat-img-file').value='';
+document.getElementById('mat-img-camera').value='';
+document.getElementById('mat-img-preview').style.display='none';
+}
+
+function saveMaterial(){
+const nombre=document.getElementById('mat-nombre').value.trim();
+if(!nombre){alert('Introduce un nombre');return}
+const data={nombre,categoria:document.getElementById('mat-categoria').value,unidad:document.getElementById('mat-unidad').value,desc:document.getElementById('mat-desc').value.trim(),img:document.getElementById('mat-img-data').value};
+const editId=document.getElementById('mat-edit-id').value;
+if(editId){const idx=materials.findIndex(x=>x.id===editId);materials[idx]={...materials[idx],...data}}
+else{data.id='m_'+Date.now();materials.push(data)}
+save();closeModal('modal-material');renderMaterials();toast('Material guardado');
+}
+
+function deleteMaterial(id){
+if(!confirm('Eliminar este material?'))return;
+materials=materials.filter(x=>x.id!==id);
+save();renderMaterials();toast('Material eliminado');
+}
+
+function renderMaterials(){
+const q=(document.getElementById('mat-search')?.value||'').toLowerCase();
+const list=materials.filter(m=>(matFilter==='all'||m.categoria===matFilter)&&(!q||m.nombre.toLowerCase().includes(q)||m.categoria.toLowerCase().includes(q)));
+document.getElementById('mat-filters').innerHTML=
+['all','Electricidad','Fontaneria','Calefaccion','Climatizacion','PCI'].map(f=>
+`<button class="chip ${matFilter===f?'active':''}" onclick="matFilter='${f}';renderMaterials()">${f==='all'?'Todas':f==='PCI'?'PCI Contra Incendios':f}</button>`).join('')+(q?` <span style="color:var(--text-light);font-size:.8rem;margin-left:8px">${list.length} resultado${list.length!==1?'s':''}</span>`:'');
+document.getElementById('materials-list').innerHTML=list.length?list.map(m=>`<tr>
+<td><div class="mat-name-cell"><img class="mat-thumb" src="${getMaterialImg(m)}" loading="lazy"><div class="mat-name-text"><strong>${m.nombre}</strong>${m.desc?'<br><small style="color:var(--text-light)">'+m.desc+'</small>':''}</div></div></td>
+<td><span class="tag tag-${m.categoria==='Electricidad'?'elec':m.categoria==='PCI'?'pci':m.categoria==='Fontaneria'?'font':'clim'}">${m.categoria}</span></td>
+<td>${m.unidad}</td>
+<td><button class="btn btn-warning" onclick="editMaterial('${m.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteMaterial('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`).join(''):'<tr><td colspan="4" class="empty-state"><div class="empty-icon">&#128230;</div><p>No hay materiales registrados</p></td></tr>';
+}
+
+
+
+function openMedicionModal(){
+document.getElementById('med-edit-id').value='';
+document.getElementById('med-modal-title').textContent='Nueva Medicion';
+document.getElementById('med-fecha').value=new Date().toISOString().split('T')[0];
+document.getElementById('med-cat').value='Electricidad';
+document.getElementById('med-cantidad').value='';
+document.getElementById('med-obs').value='';
+document.getElementById('med-mat-search').value='';
+tempMedicionLineas=[];
+populateEmpresaSelect('med-empresa');
+filterMaterialsForMedicion();
+renderTempMedLineas();
+openModal('modal-medicion');
+}
+
+function populateEmpresaSelect(selectId){
+const sel=document.getElementById(selectId);
+sel.innerHTML=empresas.length?empresas.map(e=>`<option value="${e.id}">${e.nombre} (${e.especialidad})</option>`).join(''):'<option value="">No hay empresas - Crear empresa primero</option>';
+}
+
+function filterMaterialsForMedicion(){
+const cat=document.getElementById('med-cat').value;
+const filtered=materials.filter(m=>m.categoria===cat);
+const sel=document.getElementById('med-material');
+sel.innerHTML=filtered.map(m=>`<option value="${m.id}">${m.nombre} (${m.unidad})</option>`).join('');
+if(!filtered.length)sel.innerHTML='<option value="">No hay materiales en esta categoria</option>';
+}
+
+function searchMaterialForMedicion(){
+const q=(document.getElementById('med-mat-search').value||'').toLowerCase();
+const results=document.getElementById('med-mat-results');
+if(!q){results.classList.remove('show');return}
+const filtered=materials.filter(m=>m.nombre.toLowerCase().includes(q)||m.categoria.toLowerCase().includes(q));
+results.innerHTML=filtered.length?filtered.map(m=>`<div class="search-picker-item" onclick="selectMaterialSearch(${JSON.stringify(m.id).replace(/"/g,'&quot;')})"><div class="spi-left"><img class="spi-thumb" src="${getMaterialImg(m)}" loading="lazy"><div class="spi-info"><div class="spi-name">${m.nombre.substring(0,50)}</div><div class="spi-meta">${m.categoria} &middot; ${m.unidad}</div></div></div></div>`).join(''):'<div class="search-picker-item"><em style="color:var(--text-light)">Sin resultados</em></div>';
+results.classList.add('show');
+}
+
+function selectMaterialSearch(matId){
+const m=materials.find(x=>x.id===matId);
+if(!m)return;
+document.getElementById('med-mat-search').value='';
+document.getElementById('med-mat-results').classList.remove('show');
+document.getElementById('med-cat').value=m.categoria;
+filterMaterialsForMedicion();
+document.getElementById('med-material').value=m.id;
+document.getElementById('med-cantidad').focus();
+}
+
+function addMedicionLine(){
+const materialId=document.getElementById('med-material').value;
+const cantidad=parseFloat(document.getElementById('med-cantidad').value);
+if(!materialId||!cantidad||cantidad<=0){alert('Selecciona un material y cantidad valida');return}
+const mat=materials.find(m=>m.id===materialId);
+tempMedicionLineas.push({materialId:mat.id,material:mat.nombre,categoria:mat.categoria,unidad:mat.unidad,cantidad});
+document.getElementById('med-cantidad').value='';
+document.getElementById('med-mat-search').value='';
+renderTempMedLineas();
+}
+
+function removeTempMedLine(idx){
+tempMedicionLineas.splice(idx,1);
+renderTempMedLineas();
+}
+
+function renderTempMedLineas(){
+const container=document.getElementById('med-lineas');
+container.innerHTML=tempMedicionLineas.length?`<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr style="background:var(--primary);color:#fff"><th style="padding:6px 8px;text-align:left">Material</th><th style="padding:6px 8px">Cat.</th><th style="padding:6px 8px">Cant.</th><th style="padding:6px 8px">Unidad</th><th style="padding:6px 8px">X</th></tr></thead><tbody>${tempMedicionLineas.map((l,i)=>{const mat=materials.find(x=>x.id===l.materialId);const imgSrc=mat?getMaterialImg(mat):'';return`<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px"><div style="display:flex;align-items:center;gap:8px">${imgSrc?'<img src="'+imgSrc+'" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0" loading="lazy">':''}${l.material}</div></td><td style="padding:5px 8px;text-align:center"><span class="tag tag-${l.categoria==='Electricidad'?'elec':l.categoria==='PCI'?'pci':l.categoria==='Fontaneria'?'font':'clim'}">${l.categoria}</span></td><td style="padding:5px 8px;text-align:center">${l.cantidad}</td><td style="padding:5px 8px;text-align:center">${l.unidad}</td><td style="padding:5px 8px;text-align:center"><button class="btn btn-danger" onclick="removeTempMedLine(${i})" style="padding:2px 6px;font-size:.65rem">X</button></td></tr>`}).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-light);padding:10px;font-size:.8rem">Agrega materiales usando el buscador o el selector</p>';
+}
+
+function editMedicion(id){
+const m=mediciones.find(x=>x.id===id);
+document.getElementById('med-edit-id').value=id;
+document.getElementById('med-modal-title').textContent='Editar Medicion';
+document.getElementById('med-fecha').value=m.fecha;
+populateEmpresaSelect('med-empresa');
+document.getElementById('med-empresa').value=m.empresaId||'';
+document.getElementById('med-cat').value=m.categoria;
+filterMaterialsForMedicion();
+tempMedicionLineas=[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}];
+document.getElementById('med-obs').value=m.obs||'';
+renderTempMedLineas();
+openModal('modal-medicion');
+}
+
+function saveMedicion(){
+const fecha=document.getElementById('med-fecha').value;
+const empresaId=document.getElementById('med-empresa').value;
+if(!fecha){alert('Selecciona una fecha');return}
+if(!tempMedicionLineas.length){alert('Agrega al menos un material');return}
+const emp=empresas.find(e=>e.id===empresaId);
+const editId=document.getElementById('med-edit-id').value;
+const obs=document.getElementById('med-obs').value.trim();
+if(editId){
+const idx=mediciones.findIndex(x=>x.id===editId);
+const l=tempMedicionLineas[0];
+mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs};
+}else{
+tempMedicionLineas.forEach(l=>{
+mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs});
+});
+}
+tempMedicionLineas=[];
+save();closeModal('modal-medicion');renderMediciones();toast('Medicion guardada');
+}
+
+function deleteMedicion(id){
+if(!confirm('Eliminar esta medicion?'))return;
+mediciones=mediciones.filter(x=>x.id!==id);
+save();renderMediciones();toast('Medicion eliminada');
+}
+
+function renderMediciones(){
+const fm=document.getElementById('filter-mes').value;
+const fe=document.getElementById('filter-empresa-med').value;
+const fc=document.getElementById('filter-cat-med').value;
+let list=[...mediciones];
+if(fm)list=list.filter(m=>m.fecha.startsWith(fm));
+if(fe)list=list.filter(m=>m.empresaId===fe);
+if(fc)list=list.filter(m=>m.categoria===fc);
+list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+document.getElementById('mediciones-list').innerHTML=
+(list.length?list.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr>
+<td>${m.fecha}</td><td>${m.empresa||'-'}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td>
+<td><span class="tag tag-${m.categoria==='Electricidad'?'elec':m.categoria==='PCI'?'pci':m.categoria==='Fontaneria'?'font':'clim'}">${m.categoria}</span></td>
+<td>${m.cantidad}</td><td>${m.unidad}</td>
+<td><button class="btn btn-warning" onclick="editMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">E</button> <button class="btn btn-danger" onclick="deleteMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`}).join(''):'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
+}
+
+function renderDashboard(){
+const hoy=new Date().toISOString().split('T')[0];
+const mes=hoy.substring(0,7);
+const mMes=mediciones.filter(m=>m.fecha.startsWith(mes));
+const totalCantMes=mMes.reduce((s,m)=>s+m.cantidad,0);
+document.getElementById('stats-cards').innerHTML=`
+<div class="stat-card elec"><div class="stat-icon">&#9889;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Electricidad').length}</div><div class="stat-label">Materiales Electricos</div></div>
+<div class="stat-card font"><div class="stat-icon">&#128167;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Fontaneria').length}</div><div class="stat-label">Materiales Fontaneria</div></div>
+<div class="stat-card clim"><div class="stat-icon">&#127777;&#65039;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Calefaccion').length}</div><div class="stat-label">Materiales Calefaccion</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#29B6F6,#4FC3F7)"><div class="stat-icon">&#9729;&#65039;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Climatizacion').length}</div><div class="stat-label">Materiales Climatizacion</div></div>
+<div class="stat-card pci"><div class="stat-icon">&#128293;</div><div class="stat-value">${materials.filter(m=>m.categoria==='PCI').length}</div><div class="stat-label">Materiales PCI</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#00897B,#4DB6AC)"><div class="stat-icon">&#128230;</div><div class="stat-value">${mediciones.reduce((s,m)=>s+m.cantidad,0).toFixed(1)}</div><div class="stat-label">Cantidad Total</div></div>`;
+const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
+document.getElementById('recent-list').innerHTML=recent.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr><td>${m.fecha}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td><td>${m.cantidad} ${m.unidad}</td><td>${m.empresa||'-'}</td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
+const cats=[{n:'Electricidad',c:'#4FC3F7'},{n:'Fontaneria',c:'#66BB6A'},{n:'Calefaccion',c:'#29B6F6'},{n:'Climatizacion',c:'#FFA726'},{n:'PCI',c:'#EF5350'}];
+const maxMat=Math.max(...cats.map(c=>materials.filter(m=>m.categoria===c.n).length),1);
+document.getElementById('cat-bars').innerHTML=cats.map(c=>{
+const count=materials.filter(m=>m.categoria===c.n).length;
+const pct=Math.round((count/maxMat)*100);
+return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="width:80px;font-size:.8rem">${c.n}</span><div style="flex:1;height:24px;background:#E1F5FE;border-radius:12px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c.c};border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:600">${count}</div></div></div>`}).join('');
+}
+
+function renderEstadisticas(){
+const period=document.getElementById('stat-period').value;
+const cat=document.getElementById('stat-cat').value;
+let list=cat?mediciones.filter(m=>m.categoria===cat):[...mediciones];
+const totalCant=list.reduce((s,m)=>s+m.cantidad,0);
+const totalUnidades=list.length;
+document.getElementById('stat-summary').innerHTML=`
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--primary)">&#128221;</div><div style="font-size:1.3rem;font-weight:700">${totalUnidades}</div><div style="font-size:.8rem;color:var(--text-light)">Total Mediciones</div></div>
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--success)">&#128230;</div><div style="font-size:1.3rem;font-weight:700">${totalCant.toFixed(1)}</div><div style="font-size:.8rem;color:var(--text-light)">Cantidad Total</div></div>
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--warning)">&#128207;</div><div style="font-size:1.3rem;font-weight:700">${new Set(list.map(m=>m.materialId)).size}</div><div style="font-size:.8rem;color:var(--text-light)">Materiales Diferentes</div></div>
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--danger)">&#127970;</div><div style="font-size:1.3rem;font-weight:700">${new Set(list.map(m=>m.empresaId)).size}</div><div style="font-size:.8rem;color:var(--text-light)">Empresas Activas</div></div>`;
+
+let groups={};
+if(period==='day'){
+document.getElementById('chart-title').textContent='Mediciones por Dia (ultimos 30 dias)';
+const today=new Date();
+for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=d.toISOString().split('T')[0];const short=key.substring(5);groups[short]=list.filter(m=>m.fecha===key).reduce((s,m)=>s+m.cantidad,0)}
+}else if(period==='month'){
+document.getElementById('chart-title').textContent='Mediciones por Mes';
+const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
+const yr=years.length?years[years.length-1]:new Date().getFullYear();
+for(let i=1;i<=12;i++){const key=String(i).padStart(2,'0');groups[key+'/'+yr]=list.filter(m=>m.fecha.startsWith(yr+'-'+key)).reduce((s,m)=>s+m.cantidad,0)}
+}else{
+document.getElementById('chart-title').textContent='Mediciones por Anio';
+const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
+years.forEach(y=>{groups[y]=list.filter(m=>m.fecha.startsWith(y)).reduce((s,m)=>s+m.cantidad,0)})}
+const maxVal=Math.max(...Object.values(groups),1);
+const keys=Object.keys(groups);
+document.getElementById('chart-container').innerHTML=keys.length?`<div class="chart-bar">${keys.map(k=>{
+const v=groups[k];const h=Math.round((v/maxVal)*180);
+return`<div class="chart-col"><div class="bar-value">${v>0?v.toFixed(1):''}</div><div class="bar" style="height:${Math.max(h,2)}px;background:linear-gradient(180deg,#B3E5FC,#4FC3F7)"></div><div style="font-size:.6rem;text-align:center;max-width:50px;word-break:break-all">${k}</div></div>`}).join('')}</div>`:'<p class="empty-state">Sin datos para graficar</p>';
+
+const catColors={Electricidad:'#4FC3F7',Fontaneria:'#66BB6A',Calefaccion:'#29B6F6',Climatizacion:'#FFA726',PCI:'#EF5350'};
+const catData=['Electricidad','Fontaneria','Calefaccion','Climatizacion','PCI'].map(c=>({name:c,value:list.filter(m=>m.categoria===c).reduce((s,m)=>s+m.cantidad,0),color:catColors[c]}));
+const catTotal=catData.reduce((s,c)=>s+c.value,0)||1;
+document.getElementById('cat-pie').innerHTML=catData.map(c=>{
+const pct=Math.round((c.value/catTotal)*100);
+return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:14px;height:14px;border-radius:3px;background:${c.color}"></div><span style="width:100px;font-size:.85rem">${c.name}</span><div style="flex:1;height:18px;background:#E1F5FE;border-radius:9px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c.color};border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem">${pct}%</div></div><span style="font-size:.8rem;font-weight:600">${c.value.toFixed(1)}</span></div>`}).join('');
+
+const matMap={};
+list.forEach(m=>{if(!matMap[m.material])matMap[m.material]={total:0,cat:m.categoria};matMap[m.material].total+=m.cantidad});
+const topList=Object.entries(matMap).sort((a,b)=>b[1].total-a[1].total).slice(0,8);
+document.getElementById('top-materials').innerHTML=topList.length?topList.map(([n,v],i)=>{const mat=materials.find(x=>x.nombre===n);const imgSrc=mat?getMaterialImg(mat):'';return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="width:20px;font-weight:700;color:var(--primary)">#${i+1}</span>${imgSrc?'<img src="'+imgSrc+'" style="width:24px;height:24px;object-fit:contain;border-radius:4px;flex-shrink:0">':''}<span style="flex:1;font-size:.85rem">${n}</span><span style="font-size:.85rem;font-weight:600">${v.total.toFixed(1)}</span></div>`}).join(''):'<p style="color:var(--text-light);text-align:center;padding:20px">Sin datos</p>';
+}
+
+
+
+function generatePDF(type){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+const hdr=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+let data=[],title='';
+const hoy=new Date();
+
+if(type==='day'){
+const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
+title='Reporte Diario - '+d;
+data=mediciones.filter(m=>m.fecha===d).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else if(type==='week'){
+const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
+const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);
+const fin=new Date(ini);fin.setDate(ini.getDate()+6);
+const fiS=ini.toISOString().split('T')[0],ffS=fin.toISOString().split('T')[0];
+title='Reporte Semanal - '+fiS+' al '+ffS;
+data=mediciones.filter(m=>m.fecha>=fiS&&m.fecha<=ffS).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else if(type==='month'){
+const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
+title='Reporte Mensual - '+m;
+data=mediciones.filter(m=>m.fecha.startsWith(m)).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else if(type==='year'){
+const y=document.getElementById('rpt-year').value||hoy.getFullYear();
+title='Reporte Anual - '+y;
+data=mediciones.filter(m=>m.fecha.startsWith(y)).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else if(type==='empresa'){
+const empId=document.getElementById('rpt-empresa').value;
+const emp=empresas.find(e=>e.id===empId);
+title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
+data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else{
+title='Listado de Materiales';
+hdr.length=0;hdr.push('Nombre','Categoria','Unidad','Descripcion');
+data=materials.map(m=>[m.nombre,m.categoria,m.unidad,m.desc||'']);
+}
+
+doc.setFontSize(16);doc.setTextColor(2,136,209);doc.text('Control de Medicion - Obra',14,15);
+doc.setFontSize(12);doc.text(title,14,25);
+doc.setFontSize(9);doc.setTextColor(120);doc.text('Generado: '+new Date().toLocaleString('es-ES'),14,31);
+
+doc.autoTable({head:[hdr],body:data,startY:35,theme:'grid',headStyles:{fillColor:[79,195,247],textColor:255,fontSize:8},bodyStyles:{fontSize:7},alternateRowStyles:{fillColor:[225,245,254]}});
+
+doc.save('medicion-'+type+'-'+new Date().toISOString().split('T')[0]+'.pdf');
+toast('PDF generado correctamente');
+}
+
+function exportReportExcel(type){
+let data=[], title='', headers=[];
+const hoy=new Date();
+
+if(type==='day'){
+const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
+title='Reporte Diario - '+d;
+headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+data=mediciones.filter(m=>m.fecha===d).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else if(type==='week'){
+const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
+const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);
+const fin=new Date(ini);fin.setDate(ini.getDate()+6);
+title='Reporte Semanal - '+ini.toISOString().split('T')[0]+' al '+fin.toISOString().split('T')[0];
+headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+data=mediciones.filter(m=>m.fecha>=ini.toISOString().split('T')[0]&&m.fecha<=fin.toISOString().split('T')[0]).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else if(type==='month'){
+const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
+title='Reporte Mensual - '+m;
+headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+data=mediciones.filter(m=>m.fecha.startsWith(m)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else if(type==='year'){
+const y=document.getElementById('rpt-year').value||hoy.getFullYear();
+title='Reporte Anual - '+y;
+headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+data=mediciones.filter(m=>m.fecha.startsWith(y)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else if(type==='empresa'){
+const empId=document.getElementById('rpt-empresa').value;
+const emp=empresas.find(e=>e.id===empId);
+title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
+headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else{
+title='Listado de Materiales';
+headers=['Nombre','Categoria','Unidad','Descripcion'];
+data=materials.map(m=>({Nombre:m.nombre,Categoria:m.categoria,Unidad:m.unidad,Descripcion:m.desc||''}));
+}
+
+const wsData=[headers,...data.map(d=>Object.values(d))];
+
+const ws=XLSX.utils.aoa_to_sheet(wsData);
+ws['!cols']=[{wch:12},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
+const wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
+XLSX.writeFile(wb,'medicion-'+type+'-'+new Date().toISOString().split('T')[0]+'.xlsx');
+toast('Excel exportado correctamente');
+}
+
+function exportMedicionesExcel(){
+const headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad','Observaciones'];
+const data=mediciones.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad,Observaciones:m.obs||''}));
+const wsData=[headers,...data.map(d=>Object.values(d))];
+const ws=XLSX.utils.aoa_to_sheet(wsData);
+ws['!cols']=[{wch:12},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10},{wch:20}];
+const wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,'Mediciones');
+XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
+toast('Excel exportado correctamente');
+}
+
+const APP_VERSION='11.0';
+const savedVersion=localStorage.getItem('app_version');
+if(savedVersion!==APP_VERSION){
+localStorage.removeItem('mat_data');
+localStorage.removeItem('med_data');
+localStorage.removeItem('emp_data');
+localStorage.setItem('app_version',APP_VERSION);
+}
+materials = JSON.parse(localStorage.getItem('mat_data') || '[]');
+mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
+empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
+
+const yrSel=document.getElementById('rpt-year');
+const yr=new Date().getFullYear();
+for(let y=yr;y>=yr-5;y--){yrSel.innerHTML+=`<option value="${y}">${y}</option>`}
+document.getElementById('rpt-day-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('rpt-week-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('rpt-month-date').value=new Date().toISOString().substring(0,7);
+
+function populateEmpresaReportSelect(){
+const sel=document.getElementById('rpt-empresa');
+sel.innerHTML='<option value="">Todas las empresas</option>'+empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+}
+
+function populateEmpresaFilterSelect(){
+const sel=document.getElementById('filter-empresa-med');
+sel.innerHTML='<option value="">Todas las empresas</option>'+empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+}
+
+const _IMG={
+cable:'https://media.telematel.com/assets/0024000148-5359-md01_500.jpg',
+cablebundle:'https://media.telematel.com/assets/0024000153-7a2b-md01_500.jpg',
+enchufe:'https://media.telematel.com/assets/0701018132-ead2_500.jpg',
+panel:'https://media.telematel.com/assets/0017190225-9206-md01_500.jpg',
+interruptor:'https://media.telematel.com/assets/0701000505-16a9-md01_500.jpg',
+utp:'https://media.telematel.com/assets/0024000148-5359-md01_500.jpg',
+bornas:'https://media.telematel.com/assets/0722173216-0334-md01_500.jpg',
+tubopvc:'https://media.telematel.com/assets/0004009567-0531-md01_500.jpg',
+tubomulti:'https://media.telematel.com/assets/0004009567-0531-md01_500.jpg',
+racor:'https://media.telematel.com/assets/0766073119-2747-md01_500.jpg',
+codo:'https://media.telematel.com/assets/0766073119-2747-md01_500.jpg',
+llave:'https://media.telematel.com/assets/0766073119-2747-md01_500.jpg',
+bomba:'https://media.telematel.com/assets/0373010379-206c-md01_500.jpg',
+sifon:'https://media.telematel.com/assets/0004009567-0531-md01_500.jpg',
+caldera:'https://media.telematel.com/assets/0017190225-9206-md01_500.jpg',
+termo:'https://media.telematel.com/assets/0701018132-ead2_500.jpg',
+radiador:'https://media.telematel.com/assets/0017190225-9206-md01_500.jpg',
+emisor:'https://media.telematel.com/assets/0017190225-9206-md01_500.jpg',
+split:'https://media.telematel.com/assets/0388001637-2704-md01_500.jpg',
+unidadint:'https://media.telematel.com/assets/0388001637-2704-md01_500.jpg',
+ventilador:'https://media.telematel.com/assets/0003006817-faee-md01_500.jpg',
+tuboaislante:'https://media.telematel.com/assets/0004009567-0531-md01_500.jpg',
+extintor:'https://media.telematel.com/assets/0098033286-7744-md01_500.jpg',
+detector:'https://media.telematel.com/assets/0018006236-0469_500.jpg',
+sirena:'https://media.telematel.com/assets/0017505494-7797_500.jpg',
+camara:'https://media.telematel.com/assets/0098025721-a9ca-md01_500.jpg',
+switchnet:'https://media.telematel.com/assets/0722173216-0334-md01_500.jpg',
+panelled:'https://media.telematel.com/assets/1216004413-78c7-md01_500.jpg',
+luminaria:'https://media.telematel.com/assets/1216004413-78c7-md01_500.jpg',
+foco:'https://media.telematel.com/assets/0111015963-3a7e-md01_500.jpg',
+downlight:'https://media.telematel.com/assets/0111015963-3a7e-md01_500.jpg'
+};
+const _ico=n=>{const l=n.toLowerCase();if(l.includes('utp')||l.includes('cat')||l.includes('latiguillo')||l.includes('rj45'))return _IMG.utp;if(l.includes('enchufe')||l.includes('schuko')||l.includes('roseta'))return _IMG.enchufe;if(l.includes('interruptor')||l.includes('pulsador'))return _IMG.interruptor;if(l.includes('cuadro')||l.includes('electronico'))return _IMG.panel;if(l.includes('iga')||l.includes('diferencial')||l.includes('pia')||l.includes('magnetotermico'))return _IMG.panel;if(l.includes('bornas')||l.includes('wago'))return _IMG.bornas;if(l.includes('panel led')||l.includes('pl comp'))return _IMG.panelled;if(l.includes('luminaria')||l.includes('led'))return _IMG.luminaria;if(l.includes('foco'))return _IMG.foco;if(l.includes('downlight'))return _IMG.downlight;if(l.includes('canal'))return _IMG.tubopvc;if(l.includes('pvc')||l.includes('rigido'))return _IMG.tubopvc;return _IMG.cable};
+const _icof=n=>{const l=n.toLowerCase();if(l.includes('racor'))return _IMG.racor;if(l.includes('abrazadera'))return _IMG.racor;if(l.includes('codo')||l.includes('tee')||l.includes('acople'))return _IMG.codo;if(l.includes('llave'))return _IMG.llave;if(l.includes('bomba'))return _IMG.bomba;if(l.includes('sifon'))return _IMG.sifon;return _IMG.tubomulti};
+const _icoc=n=>{const l=n.toLowerCase();if(l.includes('caldera'))return _IMG.caldera;if(l.includes('termo'))return _IMG.termo;if(l.includes('emisor'))return _IMG.emisor;return _IMG.radiador};
+const _iccl=n=>{const l=n.toLowerCase();if(l.includes('split')||l.includes('wind-free'))return _IMG.split;if(l.includes('unidad interior')||l.includes('conductos'))return _IMG.unidadint;if(l.includes('ventilador')||l.includes('extractor')||l.includes('silent')||l.includes('decor'))return _IMG.ventilador;if(l.includes('aislante')||l.includes('k-flex'))return _IMG.tuboaislante;return _IMG.split};
+const _icp=n=>{const l=n.toLowerCase();if(l.includes('extintor'))return _IMG.extintor;if(l.includes('detector')||l.includes('sensor'))return _IMG.detector;if(l.includes('sirena')||l.includes('alarma'))return _IMG.sirena;if(l.includes('camara'))return _IMG.camara;if(l.includes('switch'))return _IMG.switchnet;return _IMG.switchnet};
+const _getIcon=(cat,nombre)=>{
+if(cat==='Electricidad')return _ico(nombre);
+if(cat==='Fontaneria')return _icof(nombre);
+if(cat==='Calefaccion')return _icoc(nombre);
+if(cat==='Climatizacion')return _iccl(nombre);
+if(cat==='PCI')return _icp(nombre);
+return _IMG.cable;
+};
+if(!materials.length){
+const defaults=[];
+defaults.forEach(d=>{materials.push({id:'m_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),nombre:d.n,categoria:d.c,unidad:d.u,img:_getIcon(d.c,d.n),desc:''})});
+save();
+}
+materials.forEach(m=>{m.img=_getIcon(m.categoria,m.nombre)});
+save();
+populateEmpresaReportSelect();
+populateEmpresaFilterSelect();
+document.getElementById('med-mat-search').addEventListener('input',searchMaterialForMedicion);
+document.getElementById('med-mat-search').addEventListener('focus',searchMaterialForMedicion);
+document.addEventListener('click',function(e){
+document.querySelectorAll('.search-picker-results').forEach(r=>{
+if(!r.closest('.search-picker')||!r.closest('.search-picker').contains(e.target)){
+r.classList.remove('show');
+}
+});
+});
+renderDashboard();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
+</body>
+</html>
