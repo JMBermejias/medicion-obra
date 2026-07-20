@@ -13,6 +13,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -402,6 +404,9 @@ let mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
 let matFilter = 'all';
 let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
 let tempMedicionLineas = [];
+let _db=null;let _dbRef=null;let _syncing=false;let _ready=false;
+
+const FB_CONFIG={apiKey:"",authDomain:"",databaseURL:"",projectId:"",storageBucket:"",messagingSenderId:"",appId:""};
 
 const _iconCache={};
 function getMaterialImg(m){
@@ -413,6 +418,44 @@ function save(){
   localStorage.setItem('mat_data',JSON.stringify(materials));
   localStorage.setItem('med_data',JSON.stringify(mediciones));
   localStorage.setItem('emp_data',JSON.stringify(empresas));
+  if(_dbRef&&!_syncing){
+    _dbRef.set({materials,mediciones,empresas}).catch(e=>console.warn('Firebase sync error',e));
+  }
+}
+
+function initFirebase(){
+  if(!FB_CONFIG.apiKey||!FB_CONFIG.databaseURL)return;
+  try{
+    firebase.initializeApp(FB_CONFIG);
+    _db=firebase.database();
+    _dbRef=_db.ref('appdata');
+    _dbRef.on('value',snap=>{
+      const r=snap.val();
+      if(r){
+        _syncing=true;
+        if(r.materials)materials=r.materials;
+        if(r.mediciones)mediciones=r.mediciones;
+        if(r.empresas)empresas=r.empresas;
+        localStorage.setItem('mat_data',JSON.stringify(materials));
+        localStorage.setItem('med_data',JSON.stringify(mediciones));
+        localStorage.setItem('emp_data',JSON.stringify(empresas));
+        _syncing=false;
+        if(!_ready){_ready=true;renderAll()}
+      }
+    });
+    _ready=true;
+  }catch(e){console.warn('Firebase error',e)}
+}
+
+function renderAll(){
+  const p=document.querySelector('.page.active');
+  if(p){const id=p.id.replace('page-','');
+    if(id==='dashboard')renderDashboard();
+    if(id==='empresas')renderEmpresas();
+    if(id==='materiales')renderMaterials();
+    if(id==='mediciones')renderMediciones();
+    if(id==='estadisticas')renderEstadisticas();}
+  populateEmpresaReportSelect();populateEmpresaFilterSelect();
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -904,7 +947,7 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='11.0';
+const APP_VERSION='12.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
 localStorage.removeItem('mat_data');
@@ -999,6 +1042,7 @@ r.classList.remove('show');
 });
 renderDashboard();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+initFirebase();
 </script>
 </body>
 </html>
