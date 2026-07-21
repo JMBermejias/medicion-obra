@@ -446,7 +446,7 @@ function save(){
   localStorage.setItem('obras_data',JSON.stringify(obras));
   localStorage.setItem('med_serie_counter',medSerieCounter);
   if(_dbRef&&!_syncing){
-    _dbRef.set({materials,mediciones,empresas,obras,medSerieCounter}).catch(e=>console.warn('Firebase sync error',e));
+    _dbRef.set({materials,mediciones,empresas,obras}).catch(e=>console.warn('Firebase sync error',e));
   }
 }
 
@@ -464,12 +464,10 @@ function initFirebase(){
         if(r.mediciones)mediciones=r.mediciones;
         if(r.empresas)empresas=r.empresas;
         if(r.obras)obras=r.obras;
-        if(r.medSerieCounter!==undefined&&r.medSerieCounter>medSerieCounter)medSerieCounter=r.medSerieCounter;
         localStorage.setItem('mat_data',JSON.stringify(materials));
         localStorage.setItem('med_data',JSON.stringify(mediciones));
         localStorage.setItem('emp_data',JSON.stringify(empresas));
         localStorage.setItem('obras_data',JSON.stringify(obras));
-        localStorage.setItem('med_serie_counter',medSerieCounter);
         _syncing=false;
         if(!_ready){_ready=true;renderAll()}
       }
@@ -1075,7 +1073,7 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='16.0';
+const APP_VERSION='17.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
   mediciones.forEach(m=>{
