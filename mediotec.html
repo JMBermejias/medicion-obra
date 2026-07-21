@@ -290,15 +290,24 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <button class="btn btn-outline" onclick="clearRptFilters()" style="padding:6px 12px;font-size:.8rem">Limpiar</button>
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
-<button class="btn btn-primary" onclick="generatePDF('filtered')">&#128424; Exportar PDF</button>
-<button class="btn btn-success" onclick="exportReportExcel('filtered')">&#128202; Exportar Excel</button>
-<button class="btn btn-primary" onclick="generatePDF('materials')">&#128424; PDF Materiales</button>
-<button class="btn btn-success" onclick="exportReportExcel('materials')">&#128202; Excel Materiales</button>
+<button class="btn btn-primary" onclick="generatePDF('filtered')">&#128424; PDF Mediciones</button>
+<button class="btn btn-success" onclick="exportReportExcel('filtered')">&#128202; Excel Mediciones</button>
+<button class="btn btn-primary" onclick="generatePDF('materials-total')">&#128424; PDF Total Material</button>
+<button class="btn btn-success" onclick="exportReportExcel('materials-total')">&#128202; Excel Total Material</button>
+<button class="btn btn-primary" onclick="generatePDF('materials')">&#128424; PDF Catalogo</button>
+<button class="btn btn-success" onclick="exportReportExcel('materials')">&#128202; Excel Catalogo</button>
 </div>
 <div id="rpt-count" style="font-size:.8rem;color:var(--text-light);margin-bottom:10px"></div>
 <div class="table-wrap">
 <table><thead><tr><th>N&ordm;</th><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Materiales</th></tr></thead>
 <tbody id="rpt-preview-list"></tbody></table>
+</div>
+<div style="margin-top:15px">
+<h3 style="color:var(--primary-dark);margin-bottom:10px">Resumen por Material</h3>
+<div class="table-wrap">
+<table><thead><tr><th>Material</th><th>Categoria</th><th>Unidad</th><th>Total</th><th>Mediciones</th></tr></thead>
+<tbody id="rpt-material-totals"></tbody></table>
+</div>
 </div>
 </div>
 </div>
@@ -955,6 +964,14 @@ return list;
 
 function expandMed(m){const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);return lines.map(l=>({serie:'N'+getSerieStr(m.serie||0),fecha:m.fecha,empresa:m.empresa||'-',obra:m.obra||'-',material:l.material,categoria:l.categoria,cantidad:l.cantidad,unidad:l.unidad}))}
 
+function aggregateMaterials(list){
+const map={};
+list.forEach(m=>{const lines=m.lineas||(m.materialId?[{material:m.material,materialId:m.materialId,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
+lines.forEach(l=>{if(!map[l.material])map[l.material]={material:l.material,materialId:l.materialId,categoria:l.categoria,unidad:l.unidad,total:0,mediciones:0};
+map[l.material].total+=l.cantidad;map[l.material].mediciones++})});
+return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
 function renderReportPreview(){
 const list=getFilteredRpts();
 const totalLineas=list.reduce((s,m)=>{const l=m.lineas||(m.materialId?[{cantidad:m.cantidad}]:[]);return s+l.length},0);
@@ -964,6 +981,13 @@ const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,un
 const matText=lines.map(l=>l.material+' ('+l.cantidad+' '+l.unidad+')').join(', ');
 return`<tr><td><strong>N&ordm;${getSerieStr(m.serie||0)}</strong></td><td>${m.fecha}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td style="font-size:.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis">${matText}</td></tr>`
 }).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones para los filtros seleccionados</td></tr>';
+const agg=aggregateMaterials(list);
+document.getElementById('rpt-material-totals').innerHTML=agg.length?agg.map(a=>{
+const mat=materials.find(x=>x.id===a.materialId);const imgSrc=mat?getMaterialImg(mat):'';
+return`<tr><td><div style="display:flex;align-items:center;gap:8px">${imgSrc?'<img src="'+imgSrc+'" style="width:24px;height:24px;object-fit:contain;border-radius:4px;flex-shrink:0" loading="lazy">':''}<strong>${a.material}</strong></div></td>
+<td><span class="tag tag-${a.categoria==='Electricidad'?'elec':a.categoria==='PCI'?'pci':a.categoria==='Fontaneria'?'font':'clim'}">${a.categoria}</span></td>
+<td>${a.unidad}</td><td><strong>${a.total}</strong></td><td>${a.mediciones}</td></tr>`
+}).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">Sin datos</td></tr>';
 }
 
 function clearMedFilters(){
@@ -991,6 +1015,12 @@ if(type==='materials'){
 title='Listado de Materiales';
 hdr=['Nombre','Categoria','Unidad','Descripcion'];
 data=materials.map(m=>[m.nombre,m.categoria,m.unidad,m.desc||'']);
+}else if(type==='materials-total'){
+const list=getFilteredRpts();
+const agg=aggregateMaterials(list);
+title='Total por Material';
+hdr=['Material','Categoria','Unidad','Total','Mediciones'];
+data=agg.map(a=>[a.material,a.categoria,a.unidad,a.total,a.mediciones]);
 }else{
 const list=getFilteredRpts();
 const dDesde=document.getElementById('rpt-desde').value;
@@ -1024,6 +1054,11 @@ if(type==='materials'){
 title='Listado de Materiales';
 headers=['Nombre','Categoria','Unidad','Descripcion'];
 data=materials.map(m=>({Nombre:m.nombre,Categoria:m.categoria,Unidad:m.unidad,Descripcion:m.desc||''}));
+}else if(type==='materials-total'){
+title='Total por Material';
+headers=['Material','Categoria','Unidad','Total','Mediciones'];
+const list=getFilteredRpts();
+data=aggregateMaterials(list).map(a=>({Material:a.material,Categoria:a.categoria,Unidad:a.unidad,Total:a.total,Mediciones:a.mediciones}));
 }else{
 const list=getFilteredRpts();
 const dDesde=document.getElementById('rpt-desde').value;
