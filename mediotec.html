@@ -429,7 +429,6 @@ if(lines.length===1)return lines[0].material+' ('+lines[0].cantidad+' '+lines[0]
 if(lines.length<=3)return lines.map(l=>l.material.substring(0,18)).join(', ');
 return lines.length+' materiales';
 }
-function medCantTotal(m){return(m.lineas||[m]).reduce((s,l)=>s+(l.cantidad||0),0)}
 
 const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
 
@@ -868,7 +867,6 @@ function renderDashboard(){
 const hoy=new Date().toISOString().split('T')[0];
 const mes=hoy.substring(0,7);
 const mMes=mediciones.filter(m=>m.fecha.startsWith(mes));
-const totalCantMes=mMes.reduce((s,m)=>s+medCantTotal(m),0);
 document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card elec"><div class="stat-icon">&#9889;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Electricidad').length}</div><div class="stat-label">Materiales Electricos</div></div>
 <div class="stat-card font"><div class="stat-icon">&#128167;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Fontaneria').length}</div><div class="stat-label">Materiales Fontaneria</div></div>
@@ -877,14 +875,13 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card pci"><div class="stat-icon">&#128293;</div><div class="stat-value">${materials.filter(m=>m.categoria==='PCI').length}</div><div class="stat-label">Materiales PCI</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>`;
+<div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>`;
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
 document.getElementById('recent-list').innerHTML=recent.map(m=>{
 const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
 const matText=lines.map(l=>l.material+' ('+l.cantidad+' '+l.unidad+')').join(', ');
-return`<tr><td><strong>${getSerieStr(m.serie||0)}</strong><br><small>${m.fecha}</small></td><td style="font-size:.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis">${matText}</td><td>${medCantTotal(m).toFixed(1)}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`
-}).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
+return`<tr><td><strong>${getSerieStr(m.serie||0)}</strong><br><small>${m.fecha}</small></td><td style="font-size:.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis">${matText}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`
+}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
 const cats=[{n:'Electricidad',c:'#4FC3F7'},{n:'Fontaneria',c:'#66BB6A'},{n:'Calefaccion',c:'#29B6F6'},{n:'Climatizacion',c:'#FFA726'},{n:'PCI',c:'#EF5350'}];
 const maxMat=Math.max(...cats.map(c=>materials.filter(m=>m.categoria===c.n).length),1);
 document.getElementById('cat-bars').innerHTML=cats.map(c=>{
@@ -898,11 +895,8 @@ const period=document.getElementById('stat-period').value;
 const cat=document.getElementById('stat-cat').value;
 function medMatchesCat(m,c){if(!c)return true;return(m.lineas||[]).some(l=>l.categoria===c)||(m.categoria===c)}
 let list=mediciones.filter(m=>medMatchesCat(m,cat));
-function totalCantList(lst){return lst.reduce((s,m)=>s+medCantTotal(m),0)}
-const totalCant=totalCantList(list);
 const totalUnidades=list.length;
 const allLineas=list.flatMap(m=>m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]));
-const totalLineas=allLineas.length;
 const matCount=new Set(allLineas.map(l=>l.materialId)).size;
 const empCount=new Set(list.map(m=>m.empresaId)).size;
 document.getElementById('stat-summary').innerHTML=`
@@ -914,16 +908,16 @@ let groups={};
 if(period==='day'){
 document.getElementById('chart-title').textContent='Mediciones por Dia (ultimos 30 dias)';
 const today=new Date();
-for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=d.toISOString().split('T')[0];const short=key.substring(5);groups[short]=totalCantList(list.filter(m=>m.fecha===key))}
+for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=d.toISOString().split('T')[0];const short=key.substring(5);groups[short]=list.filter(m=>m.fecha===key).length}
 }else if(period==='month'){
 document.getElementById('chart-title').textContent='Mediciones por Mes';
 const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
 const yr=years.length?years[years.length-1]:new Date().getFullYear();
-for(let i=1;i<=12;i++){const key=String(i).padStart(2,'0');groups[key+'/'+yr]=totalCantList(list.filter(m=>m.fecha.startsWith(yr+'-'+key)))}
+for(let i=1;i<=12;i++){const key=String(i).padStart(2,'0');groups[key+'/'+yr]=list.filter(m=>m.fecha.startsWith(yr+'-'+key)).length}
 }else{
 document.getElementById('chart-title').textContent='Mediciones por Anio';
 const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
-years.forEach(y=>{groups[y]=totalCantList(list.filter(m=>m.fecha.startsWith(y)))})}
+years.forEach(y=>{groups[y]=list.filter(m=>m.fecha.startsWith(y)).length})}
 const maxVal=Math.max(...Object.values(groups),1);
 const keys=Object.keys(groups);
 document.getElementById('chart-container').innerHTML=keys.length?`<div class="chart-bar">${keys.map(k=>{
