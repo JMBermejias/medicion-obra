@@ -163,7 +163,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="grid grid-2" style="margin-top:20px">
 <div class="card">
 <h3 style="color:var(--primary-dark);margin-bottom:15px">Mediciones Recientes</h3>
-<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Empresa</th><th>Obra</th></tr></thead><tbody id="recent-list"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>N&ordm;/Fecha</th><th>Materiales</th><th>Cant.</th><th>Empresa</th><th>Obra</th></tr></thead><tbody id="recent-list"></tbody></table></div>
 </div>
 <div class="card">
 <h3 style="color:var(--primary-dark);margin-bottom:15px">Materiales por Categoria</h3>
@@ -241,7 +241,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 </div>
 <div class="card">
 <div class="table-wrap">
-<table><thead><tr><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Material</th><th>Categoria</th><th>Cantidad</th><th>Unidad</th><th>Acciones</th></tr></thead>
+<table><thead><tr><th>N&ordm;/Fecha</th><th>Empresa</th><th>Obra</th><th>Materiales</th><th>Categorias</th><th>Cant. Total</th><th>Acciones</th></tr></thead>
 <tbody id="mediciones-list"></tbody></table>
 </div>
 </div>
@@ -454,7 +454,19 @@ let matFilter = 'all';
 let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
 let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let tempMedicionLineas = [];
+let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _db=null;let _dbRef=null;let _syncing=false;let _ready=false;
+
+function nextSerie(){medSerieCounter++;localStorage.setItem('med_serie_counter',medSerieCounter);return medSerieCounter}
+function getSerieStr(n){return String(n).padStart(5,'0')}
+
+function medLineasSummary(m){
+const lines=m.lineas||[];
+if(lines.length===1)return lines[0].material+' ('+lines[0].cantidad+' '+lines[0].unidad+')';
+if(lines.length<=3)return lines.map(l=>l.material.substring(0,18)).join(', ');
+return lines.length+' materiales';
+}
+function medCantTotal(m){return(m.lineas||[m]).reduce((s,l)=>s+(l.cantidad||0),0)}
 
 const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
 
@@ -469,8 +481,9 @@ function save(){
   localStorage.setItem('med_data',JSON.stringify(mediciones));
   localStorage.setItem('emp_data',JSON.stringify(empresas));
   localStorage.setItem('obras_data',JSON.stringify(obras));
+  localStorage.setItem('med_serie_counter',medSerieCounter);
   if(_dbRef&&!_syncing){
-    _dbRef.set({materials,mediciones,empresas,obras}).catch(e=>console.warn('Firebase sync error',e));
+    _dbRef.set({materials,mediciones,empresas,obras,medSerieCounter}).catch(e=>console.warn('Firebase sync error',e));
   }
 }
 
@@ -488,10 +501,12 @@ function initFirebase(){
         if(r.mediciones)mediciones=r.mediciones;
         if(r.empresas)empresas=r.empresas;
         if(r.obras)obras=r.obras;
+        if(r.medSerieCounter!==undefined&&r.medSerieCounter>medSerieCounter)medSerieCounter=r.medSerieCounter;
         localStorage.setItem('mat_data',JSON.stringify(materials));
         localStorage.setItem('med_data',JSON.stringify(mediciones));
         localStorage.setItem('emp_data',JSON.stringify(empresas));
         localStorage.setItem('obras_data',JSON.stringify(obras));
+        localStorage.setItem('med_serie_counter',medSerieCounter);
         _syncing=false;
         if(!_ready){_ready=true;renderAll()}
       }
@@ -817,15 +832,16 @@ container.innerHTML=tempMedicionLineas.length?`<table style="width:100%;border-c
 function editMedicion(id){
 const m=mediciones.find(x=>x.id===id);
 document.getElementById('med-edit-id').value=id;
-document.getElementById('med-modal-title').textContent='Editar Medicion';
+document.getElementById('med-modal-title').textContent='Editar Medicion #'+getSerieStr(m.serie||0);
 document.getElementById('med-fecha').value=m.fecha;
 populateEmpresaSelect('med-empresa');
 document.getElementById('med-empresa').value=m.empresaId||'';
 populateObraSelect('med-obra');
 document.getElementById('med-obra').value=m.obraId||'';
-document.getElementById('med-cat').value=m.categoria;
+document.getElementById('med-cat').value='Electricidad';
 filterMaterialsForMedicion();
-tempMedicionLineas=[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}];
+const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
+tempMedicionLineas=lines.map(l=>({...l}));
 document.getElementById('med-obs').value=m.obs||'';
 renderTempMedLineas();
 openModal('modal-medicion');
@@ -841,14 +857,13 @@ const emp=empresas.find(e=>e.id===empresaId);
 const ob=obras.find(o=>o.id===obraId);
 const editId=document.getElementById('med-edit-id').value;
 const obs=document.getElementById('med-obs').value.trim();
+const lineas=tempMedicionLineas.map(l=>({materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad}));
 if(editId){
 const idx=mediciones.findIndex(x=>x.id===editId);
-const l=tempMedicionLineas[0];
-mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs};
+mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',lineas,obs};
 }else{
-tempMedicionLineas.forEach(l=>{
-mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs});
-});
+const serie=nextSerie();
+mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,serie,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',lineas,obs});
 }
 tempMedicionLineas=[];
 save();closeModal('modal-medicion');renderMediciones();toast('Medicion guardada');
@@ -869,22 +884,27 @@ let list=[...mediciones];
 if(fm)list=list.filter(m=>m.fecha.startsWith(fm));
 if(fe)list=list.filter(m=>m.empresaId===fe);
 if(fo)list=list.filter(m=>m.obraId===fo);
-if(fc)list=list.filter(m=>m.categoria===fc);
+if(fc)list=list.filter(m=>(m.lineas||[]).some(l=>l.categoria===fc)||(m.categoria===fc));
 list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 document.getElementById('mediciones-list').innerHTML=
-(list.length?list.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr>
-<td>${m.fecha}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td>
-<td><span class="tag tag-${m.categoria==='Electricidad'?'elec':m.categoria==='PCI'?'pci':m.categoria==='Fontaneria'?'font':'clim'}">${m.categoria}</span></td>
-<td>${m.cantidad}</td><td>${m.unidad}</td>
+(list.length?list.map(m=>{
+const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
+const matNames=lines.map(l=>'<span style="font-size:.8rem">'+l.material+' <strong>'+l.cantidad+'</strong> '+l.unidad+'</span>').join('<br>');
+const cats=[...new Set(lines.map(l=>l.categoria))];
+const tags=cats.map(c=>'<span class="tag tag-'+(c==='Electricidad'?'elec':c==='PCI'?'pci':c==='Fontaneria'?'font':c==='Climatizacion'?'clim':'cal')+'" style="margin:1px">'+c+'</span>').join(' ');
+return`<tr>
+<td><span style="font-weight:700;color:var(--primary-dark)">N&ordm;${getSerieStr(m.serie||0)}</span><br><small style="color:var(--text-light)">${m.fecha}</small></td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td>${matNames}</td>
+<td>${tags}</td>
+<td>${lines.reduce((s,l)=>s+l.cantidad,0).toFixed(1)}</td>
 <td><button class="btn btn-warning" onclick="editMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">E</button> <button class="btn btn-danger" onclick="deleteMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
-</tr>`}).join(''):'<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
+</tr>`}).join(''):'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
 }
 
 function renderDashboard(){
 const hoy=new Date().toISOString().split('T')[0];
 const mes=hoy.substring(0,7);
 const mMes=mediciones.filter(m=>m.fecha.startsWith(mes));
-const totalCantMes=mMes.reduce((s,m)=>s+m.cantidad,0);
+const totalCantMes=mMes.reduce((s,m)=>s+medCantTotal(m),0);
 document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card elec"><div class="stat-icon">&#9889;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Electricidad').length}</div><div class="stat-label">Materiales Electricos</div></div>
 <div class="stat-card font"><div class="stat-icon">&#128167;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Fontaneria').length}</div><div class="stat-label">Materiales Fontaneria</div></div>
@@ -895,9 +915,13 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#00897B,#4DB6AC)"><div class="stat-icon">&#128230;</div><div class="stat-value">${mediciones.reduce((s,m)=>s+m.cantidad,0).toFixed(1)}</div><div class="stat-label">Cantidad Total</div></div>`;
+<div class="stat-card" style="background:linear-gradient(135deg,#00897B,#4DB6AC)"><div class="stat-icon">&#128230;</div><div class="stat-value">${mediciones.reduce((s,m)=>s+medCantTotal(m),0).toFixed(1)}</div><div class="stat-label">Cantidad Total</div></div>`;
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
-document.getElementById('recent-list').innerHTML=recent.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr><td>${m.fecha}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td><td>${m.cantidad} ${m.unidad}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
+document.getElementById('recent-list').innerHTML=recent.map(m=>{
+const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
+const matText=lines.map(l=>l.material+' ('+l.cantidad+' '+l.unidad+')').join(', ');
+return`<tr><td><strong>${getSerieStr(m.serie||0)}</strong><br><small>${m.fecha}</small></td><td style="font-size:.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis">${matText}</td><td>${medCantTotal(m).toFixed(1)}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`
+}).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
 const cats=[{n:'Electricidad',c:'#4FC3F7'},{n:'Fontaneria',c:'#66BB6A'},{n:'Calefaccion',c:'#29B6F6'},{n:'Climatizacion',c:'#FFA726'},{n:'PCI',c:'#EF5350'}];
 const maxMat=Math.max(...cats.map(c=>materials.filter(m=>m.categoria===c.n).length),1);
 document.getElementById('cat-bars').innerHTML=cats.map(c=>{
@@ -909,29 +933,35 @@ return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
 function renderEstadisticas(){
 const period=document.getElementById('stat-period').value;
 const cat=document.getElementById('stat-cat').value;
-let list=cat?mediciones.filter(m=>m.categoria===cat):[...mediciones];
-const totalCant=list.reduce((s,m)=>s+m.cantidad,0);
+function medMatchesCat(m,c){if(!c)return true;return(m.lineas||[]).some(l=>l.categoria===c)||(m.categoria===c)}
+let list=mediciones.filter(m=>medMatchesCat(m,cat));
+function totalCantList(lst){return lst.reduce((s,m)=>s+medCantTotal(m),0)}
+const totalCant=totalCantList(list);
 const totalUnidades=list.length;
+const allLineas=list.flatMap(m=>m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]));
+const totalLineas=allLineas.length;
+const matCount=new Set(allLineas.map(l=>l.materialId)).size;
+const empCount=new Set(list.map(m=>m.empresaId)).size;
 document.getElementById('stat-summary').innerHTML=`
 <div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--primary)">&#128221;</div><div style="font-size:1.3rem;font-weight:700">${totalUnidades}</div><div style="font-size:.8rem;color:var(--text-light)">Total Mediciones</div></div>
 <div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--success)">&#128230;</div><div style="font-size:1.3rem;font-weight:700">${totalCant.toFixed(1)}</div><div style="font-size:.8rem;color:var(--text-light)">Cantidad Total</div></div>
-<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--warning)">&#128207;</div><div style="font-size:1.3rem;font-weight:700">${new Set(list.map(m=>m.materialId)).size}</div><div style="font-size:.8rem;color:var(--text-light)">Materiales Diferentes</div></div>
-<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--danger)">&#127970;</div><div style="font-size:1.3rem;font-weight:700">${new Set(list.map(m=>m.empresaId)).size}</div><div style="font-size:.8rem;color:var(--text-light)">Empresas Activas</div></div>`;
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--warning)">&#128207;</div><div style="font-size:1.3rem;font-weight:700">${matCount}</div><div style="font-size:.8rem;color:var(--text-light)">Materiales Diferentes</div></div>
+<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--danger)">&#127970;</div><div style="font-size:1.3rem;font-weight:700">${empCount}</div><div style="font-size:.8rem;color:var(--text-light)">Empresas Activas</div></div>`;
 
 let groups={};
 if(period==='day'){
 document.getElementById('chart-title').textContent='Mediciones por Dia (ultimos 30 dias)';
 const today=new Date();
-for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=d.toISOString().split('T')[0];const short=key.substring(5);groups[short]=list.filter(m=>m.fecha===key).reduce((s,m)=>s+m.cantidad,0)}
+for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=d.toISOString().split('T')[0];const short=key.substring(5);groups[short]=totalCantList(list.filter(m=>m.fecha===key))}
 }else if(period==='month'){
 document.getElementById('chart-title').textContent='Mediciones por Mes';
 const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
 const yr=years.length?years[years.length-1]:new Date().getFullYear();
-for(let i=1;i<=12;i++){const key=String(i).padStart(2,'0');groups[key+'/'+yr]=list.filter(m=>m.fecha.startsWith(yr+'-'+key)).reduce((s,m)=>s+m.cantidad,0)}
+for(let i=1;i<=12;i++){const key=String(i).padStart(2,'0');groups[key+'/'+yr]=totalCantList(list.filter(m=>m.fecha.startsWith(yr+'-'+key)))}
 }else{
 document.getElementById('chart-title').textContent='Mediciones por Anio';
 const years=[...new Set(mediciones.map(m=>m.fecha.substring(0,4)))].sort();
-years.forEach(y=>{groups[y]=list.filter(m=>m.fecha.startsWith(y)).reduce((s,m)=>s+m.cantidad,0)})}
+years.forEach(y=>{groups[y]=totalCantList(list.filter(m=>m.fecha.startsWith(y)))})}
 const maxVal=Math.max(...Object.values(groups),1);
 const keys=Object.keys(groups);
 document.getElementById('chart-container').innerHTML=keys.length?`<div class="chart-bar">${keys.map(k=>{
@@ -939,14 +969,14 @@ const v=groups[k];const h=Math.round((v/maxVal)*180);
 return`<div class="chart-col"><div class="bar-value">${v>0?v.toFixed(1):''}</div><div class="bar" style="height:${Math.max(h,2)}px;background:linear-gradient(180deg,#B3E5FC,#4FC3F7)"></div><div style="font-size:.6rem;text-align:center;max-width:50px;word-break:break-all">${k}</div></div>`}).join('')}</div>`:'<p class="empty-state">Sin datos para graficar</p>';
 
 const catColors={Electricidad:'#4FC3F7',Fontaneria:'#66BB6A',Calefaccion:'#29B6F6',Climatizacion:'#FFA726',PCI:'#EF5350'};
-const catData=['Electricidad','Fontaneria','Calefaccion','Climatizacion','PCI'].map(c=>({name:c,value:list.filter(m=>m.categoria===c).reduce((s,m)=>s+m.cantidad,0),color:catColors[c]}));
+const catData=['Electricidad','Fontaneria','Calefaccion','Climatizacion','PCI'].map(c=>({name:c,value:allLineas.filter(l=>l.categoria===c).reduce((s,l)=>s+l.cantidad,0),color:catColors[c]}));
 const catTotal=catData.reduce((s,c)=>s+c.value,0)||1;
 document.getElementById('cat-pie').innerHTML=catData.map(c=>{
 const pct=Math.round((c.value/catTotal)*100);
-return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:14px;height:14px;border-radius:3px;background:${c.color}"></div><span style="width:100px;font-size:.85rem">${c.name}</span><div style="flex:1;height:18px;background:#E1F5FE;border-radius:9px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c.color};border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem">${pct}%</div></div><span style="font-size:.8rem;font-weight:600">${c.value.toFixed(1)}</span></div>`}).join('');
+return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:14px;height:14px;border-radius:3px;background:${c.color}"></div><span style="width:100px;font-size:.85rem">${c.name}</span><div style="flex:1;height:18px;background:#E1F5FE;border-radius:9px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c.color};border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem">${pct}%</div></div><span style="font-size:.85rem;font-weight:600">${c.value.toFixed(1)}</span></div>`}).join('');
 
 const matMap={};
-list.forEach(m=>{if(!matMap[m.material])matMap[m.material]={total:0,cat:m.categoria};matMap[m.material].total+=m.cantidad});
+allLineas.forEach(l=>{if(!matMap[l.material])matMap[l.material]={total:0,cat:l.categoria};matMap[l.material].total+=l.cantidad});
 const topList=Object.entries(matMap).sort((a,b)=>b[1].total-a[1].total).slice(0,8);
 document.getElementById('top-materials').innerHTML=topList.length?topList.map(([n,v],i)=>{const mat=materials.find(x=>x.nombre===n);const imgSrc=mat?getMaterialImg(mat):'';return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="width:20px;font-weight:700;color:var(--primary)">#${i+1}</span>${imgSrc?'<img src="'+imgSrc+'" style="width:24px;height:24px;object-fit:contain;border-radius:4px;flex-shrink:0">':''}<span style="flex:1;font-size:.85rem">${n}</span><span style="font-size:.85rem;font-weight:600">${v.total.toFixed(1)}</span></div>`}).join(''):'<p style="color:var(--text-light);text-align:center;padding:20px">Sin datos</p>';
 }
@@ -956,9 +986,11 @@ document.getElementById('top-materials').innerHTML=topList.length?topList.map(([
 function generatePDF(type){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
-const hdr=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+const hdr=['N Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let data=[],title='';
 const hoy=new Date();
+function expandMed(m){const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);return lines.map(l=>['N'+getSerieStr(m.serie||0),m.fecha,m.empresa||'-',m.obra||'-',l.material,l.categoria,l.cantidad,l.unidad])}
+function expandMeds(list){return list.flatMap(m=>expandMed(m))}
 
 if(type==='day'){
 const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
@@ -966,7 +998,7 @@ const wo=document.getElementById('rpt-day-obra').value;
 title='Reporte Diario - '+d;
 let list=mediciones.filter(m=>m.fecha===d);
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=expandMeds(list);
 }else if(type==='week'){
 const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
 const wo=document.getElementById('rpt-week-obra').value;
@@ -976,31 +1008,31 @@ const fiS=ini.toISOString().split('T')[0],ffS=fin.toISOString().split('T')[0];
 title='Reporte Semanal - '+fiS+' al '+ffS;
 let list=mediciones.filter(m=>m.fecha>=fiS&&m.fecha<=ffS);
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=expandMeds(list);
 }else if(type==='month'){
 const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
 const wo=document.getElementById('rpt-month-obra').value;
 title='Reporte Mensual - '+m;
 let list=mediciones.filter(m=>m.fecha.startsWith(m));
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=expandMeds(list);
 }else if(type==='year'){
 const y=document.getElementById('rpt-year').value||hoy.getFullYear();
 const wo=document.getElementById('rpt-year-obra').value;
 title='Reporte Anual - '+y;
 let list=mediciones.filter(m=>m.fecha.startsWith(y));
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=expandMeds(list);
 }else if(type==='empresa'){
 const empId=document.getElementById('rpt-empresa').value;
 const emp=empresas.find(e=>e.id===empId);
 title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
-data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=empId?expandMeds(mediciones.filter(m=>m.empresaId===empId)):expandMeds(mediciones);
 }else if(type==='obra'){
 const obraId=document.getElementById('rpt-obra').value;
 const ob=obras.find(o=>o.id===obraId);
 title='Mediciones por Obra - '+(ob?ob.nombre:'Todas');
-data=obraId?mediciones.filter(m=>m.obraId===obraId).map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=obraId?expandMeds(mediciones.filter(m=>m.obraId===obraId)):expandMeds(mediciones);
 }else{
 title='Listado de Materiales';
 hdr.length=0;hdr.push('Nombre','Categoria','Unidad','Descripcion');
@@ -1020,53 +1052,55 @@ toast('PDF generado correctamente');
 function exportReportExcel(type){
 let data=[], title='', headers=[];
 const hoy=new Date();
+function expandMed(m){const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);return lines.map(l=>({Serie:'N'+getSerieStr(m.serie||0),Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:l.material,Categoria:l.categoria,Cantidad:l.cantidad,Unidad:l.unidad}))}
+function expandMeds(list){return list.flatMap(m=>expandMed(m))}
 
 if(type==='day'){
 const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
 const wo=document.getElementById('rpt-day-obra').value;
 title='Reporte Diario - '+d;
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let list=mediciones.filter(m=>m.fecha===d);
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+data=expandMeds(list);
 }else if(type==='week'){
 const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
 const wo=document.getElementById('rpt-week-obra').value;
 const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);
 const fin=new Date(ini);fin.setDate(ini.getDate()+6);
 title='Reporte Semanal - '+ini.toISOString().split('T')[0]+' al '+fin.toISOString().split('T')[0];
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let list=mediciones.filter(m=>m.fecha>=ini.toISOString().split('T')[0]&&m.fecha<=fin.toISOString().split('T')[0]);
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+data=expandMeds(list);
 }else if(type==='month'){
 const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
 const wo=document.getElementById('rpt-month-obra').value;
 title='Reporte Mensual - '+m;
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let list=mediciones.filter(m=>m.fecha.startsWith(m));
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+data=expandMeds(list);
 }else if(type==='year'){
 const y=document.getElementById('rpt-year').value||hoy.getFullYear();
 const wo=document.getElementById('rpt-year-obra').value;
 title='Reporte Anual - '+y;
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let list=mediciones.filter(m=>m.fecha.startsWith(y));
 if(wo)list=list.filter(m=>m.obraId===wo);
-data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+data=expandMeds(list);
 }else if(type==='empresa'){
 const empId=document.getElementById('rpt-empresa').value;
 const emp=empresas.find(e=>e.id===empId);
 title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
-data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+data=empId?expandMeds(mediciones.filter(m=>m.empresaId===empId)):expandMeds(mediciones);
 }else if(type==='obra'){
 const obraId=document.getElementById('rpt-obra').value;
 const ob=obras.find(o=>o.id===obraId);
 title='Mediciones por Obra - '+(ob?ob.nombre:'Todas');
-headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
-data=obraId?mediciones.filter(m=>m.obraId===obraId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+data=obraId?expandMeds(mediciones.filter(m=>m.obraId===obraId)):expandMeds(mediciones);
 }else{
 title='Listado de Materiales';
 headers=['Nombre','Categoria','Unidad','Descripcion'];
@@ -1076,7 +1110,7 @@ data=materials.map(m=>({Nombre:m.nombre,Categoria:m.categoria,Unidad:m.unidad,De
 const wsData=[headers,...data.map(d=>Object.values(d))];
 
 const ws=XLSX.utils.aoa_to_sheet(wsData);
-ws['!cols']=[{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
+ws['!cols']=[{wch:10},{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
 XLSX.writeFile(wb,'medicion-'+type+'-'+new Date().toISOString().split('T')[0]+'.xlsx');
@@ -1084,30 +1118,42 @@ toast('Excel exportado correctamente');
 }
 
 function exportMedicionesExcel(){
-const headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad','Observaciones'];
-const data=mediciones.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad,Observaciones:m.obs||''}));
+const headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad','Observaciones'];
+const data=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).flatMap(m=>{
+const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
+return lines.map(l=>({Serie:'N'+getSerieStr(m.serie||0),Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:l.material,Categoria:l.categoria,Cantidad:l.cantidad,Unidad:l.unidad,Observaciones:m.obs||''}));
+});
 const wsData=[headers,...data.map(d=>Object.values(d))];
 const ws=XLSX.utils.aoa_to_sheet(wsData);
-ws['!cols']=[{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10},{wch:20}];
+ws['!cols']=[{wch:10},{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10},{wch:20}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,'Mediciones');
 XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='13.0';
+const APP_VERSION='14.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
-localStorage.removeItem('mat_data');
-localStorage.removeItem('med_data');
-localStorage.removeItem('emp_data');
-localStorage.removeItem('obras_data');
-localStorage.setItem('app_version',APP_VERSION);
+  mediciones.forEach(m=>{
+    if(!m.lineas&&m.materialId){
+      m.lineas=[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}];
+      delete m.materialId;delete m.material;delete m.categoria;delete m.unidad;delete m.cantidad;
+    }
+  });
+  let maxSerie=0;
+  mediciones.forEach(m=>{if(m.serie&&m.serie>maxSerie)maxSerie=m.serie});
+  if(maxSerie>=medSerieCounter)medSerieCounter=maxSerie;
+  mediciones.forEach(m=>{if(!m.serie){m.serie=nextSerie()}});
+  localStorage.setItem('med_serie_counter',medSerieCounter);
+  localStorage.setItem('med_data',JSON.stringify(mediciones));
+  localStorage.setItem('app_version',APP_VERSION);
 }
 materials = JSON.parse(localStorage.getItem('mat_data') || '[]');
 mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
 empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
 obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
+medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 
 const yrSel=document.getElementById('rpt-year');
 const yr=new Date().getFullYear();
