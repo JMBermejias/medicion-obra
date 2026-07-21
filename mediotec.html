@@ -879,8 +879,7 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#00897B,#4DB6AC)"><div class="stat-icon">&#128230;</div><div class="stat-value">${mediciones.reduce((s,m)=>s+medCantTotal(m),0).toFixed(1)}</div><div class="stat-label">Cantidad Total</div></div>`;
+<div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>`;
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
 document.getElementById('recent-list').innerHTML=recent.map(m=>{
 const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
@@ -909,7 +908,6 @@ const matCount=new Set(allLineas.map(l=>l.materialId)).size;
 const empCount=new Set(list.map(m=>m.empresaId)).size;
 document.getElementById('stat-summary').innerHTML=`
 <div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--primary)">&#128221;</div><div style="font-size:1.3rem;font-weight:700">${totalUnidades}</div><div style="font-size:.8rem;color:var(--text-light)">Total Mediciones</div></div>
-<div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--success)">&#128230;</div><div style="font-size:1.3rem;font-weight:700">${totalCant.toFixed(1)}</div><div style="font-size:.8rem;color:var(--text-light)">Cantidad Total</div></div>
 <div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--warning)">&#128207;</div><div style="font-size:1.3rem;font-weight:700">${matCount}</div><div style="font-size:.8rem;color:var(--text-light)">Materiales Diferentes</div></div>
 <div class="card" style="text-align:center"><div style="font-size:1.5rem;color:var(--danger)">&#127970;</div><div style="font-size:1.3rem;font-weight:700">${empCount}</div><div style="font-size:.8rem;color:var(--text-light)">Empresas Activas</div></div>`;
 
@@ -1073,7 +1071,7 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='17.0';
+const APP_VERSION='18.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
   mediciones.forEach(m=>{
