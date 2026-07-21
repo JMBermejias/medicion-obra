@@ -145,6 +145,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <aside class="sidebar">
 <h2>&#128295; Control de Obra<span>Sistema de Medicion</span></h2>
 <button class="nav-btn active" onclick="showPage('dashboard')"><span class="icon">&#128202;</span>Panel Principal</button>
+<button class="nav-btn" onclick="showPage('obras')"><span class="icon">&#127959;</span>Obras</button>
 <button class="nav-btn" onclick="showPage('empresas')"><span class="icon">&#127970;</span>Empresas Instaladoras</button>
 <button class="nav-btn" onclick="showPage('materiales')"><span class="icon">&#128230;</span>Materiales</button>
 <button class="nav-btn" onclick="showPage('mediciones')"><span class="icon">&#128221;</span>Mediciones</button>
@@ -162,11 +163,28 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="grid grid-2" style="margin-top:20px">
 <div class="card">
 <h3 style="color:var(--primary-dark);margin-bottom:15px">Mediciones Recientes</h3>
-<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Empresa</th></tr></thead><tbody id="recent-list"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Empresa</th><th>Obra</th></tr></thead><tbody id="recent-list"></tbody></table></div>
 </div>
 <div class="card">
 <h3 style="color:var(--primary-dark);margin-bottom:15px">Materiales por Categoria</h3>
 <div id="cat-bars" style="padding:10px"></div>
+</div>
+</div>
+</div>
+
+<!-- OBRAS -->
+<div id="page-obras" class="page">
+<div class="page-header">
+<h1>&#127959; Obras</h1>
+<button class="btn btn-primary" onclick="openObraModal()">+ Nueva Obra</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px">
+<input type="text" id="obra-search" placeholder="Buscar obra..." oninput="renderObras()" style="flex:1;min-width:200px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;font-size:.85rem;outline:none">
+</div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Nombre</th><th>Direccion</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
+<tbody id="obras-list"></tbody></table>
 </div>
 </div>
 </div>
@@ -218,11 +236,12 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="filters" style="margin-bottom:15px">
 <input type="month" id="filter-mes" onchange="renderMediciones()">
 <select id="filter-empresa-med" onchange="renderMediciones()"><option value="">Todas las empresas</option></select>
+<select id="filter-obra-med" onchange="renderMediciones()"><option value="">Todas las obras</option></select>
 <select id="filter-cat-med" onchange="renderMediciones()"><option value="">Todas las categorias</option><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option></select>
 </div>
 <div class="card">
 <div class="table-wrap">
-<table><thead><tr><th>Fecha</th><th>Empresa</th><th>Material</th><th>Categoria</th><th>Cantidad</th><th>Unidad</th><th>Acciones</th></tr></thead>
+<table><thead><tr><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Material</th><th>Categoria</th><th>Cantidad</th><th>Unidad</th><th>Acciones</th></tr></thead>
 <tbody id="mediciones-list"></tbody></table>
 </div>
 </div>
@@ -261,7 +280,8 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="icon">&#128197;</div>
 <h3>Reporte Diario</h3>
 <p>Listado de mediciones del dia seleccionado</p>
-<input type="date" id="rpt-day-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<input type="date" id="rpt-day-date" style="margin-bottom:10px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<select id="rpt-day-obra" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
 <br><button class="btn btn-primary" onclick="generatePDF('day')">&#128424; PDF</button>
 <button class="btn btn-success export-btn" onclick="exportReportExcel('day')">&#128202; Excel</button>
 </div>
@@ -269,7 +289,8 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="icon">&#128198;</div>
 <h3>Reporte Semanal</h3>
 <p>Mediciones de una semana completa</p>
-<input type="date" id="rpt-week-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<input type="date" id="rpt-week-date" style="margin-bottom:10px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<select id="rpt-week-obra" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
 <br><button class="btn btn-primary" onclick="generatePDF('week')">&#128424; PDF</button>
 <button class="btn btn-success export-btn" onclick="exportReportExcel('week')">&#128202; Excel</button>
 </div>
@@ -277,7 +298,8 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="icon">&#128197;</div>
 <h3>Reporte Mensual</h3>
 <p>Todas las mediciones de un mes</p>
-<input type="month" id="rpt-month-date" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<input type="month" id="rpt-month-date" style="margin-bottom:10px;padding:8px;border:2px solid var(--border);border-radius:8px">
+<select id="rpt-month-obra" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
 <br><button class="btn btn-primary" onclick="generatePDF('month')">&#128424; PDF</button>
 <button class="btn btn-success export-btn" onclick="exportReportExcel('month')">&#128202; Excel</button>
 </div>
@@ -287,7 +309,8 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="icon">&#128200;</div>
 <h3>Reporte Anual</h3>
 <p>Resumen completo de todo el anio</p>
-<select id="rpt-year" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"></select>
+<select id="rpt-year" style="margin-bottom:10px;padding:8px;border:2px solid var(--border);border-radius:8px"></select>
+<select id="rpt-year-obra" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
 <br><button class="btn btn-primary" onclick="generatePDF('year')">&#128424; PDF</button>
 <button class="btn btn-success export-btn" onclick="exportReportExcel('year')">&#128202; Excel</button>
 </div>
@@ -305,6 +328,14 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <select id="rpt-empresa" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Seleccionar empresa</option></select>
 <br><button class="btn btn-primary" onclick="generatePDF('empresa')">&#128424; PDF</button>
 <button class="btn btn-success export-btn" onclick="exportReportExcel('empresa')">&#128202; Excel</button>
+</div>
+<div class="card report-card">
+<div class="icon">&#127959;</div>
+<h3>Medicion por Obra</h3>
+<p>Listado de mediciones por obra</p>
+<select id="rpt-obra" style="margin-bottom:15px;padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Seleccionar obra</option></select>
+<br><button class="btn btn-primary" onclick="generatePDF('obra')">&#128424; PDF</button>
+<button class="btn btn-success export-btn" onclick="exportReportExcel('obra')">&#128202; Excel</button>
 </div>
 </div>
 </div>
@@ -329,6 +360,23 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="modal-actions">
 <button class="btn btn-outline" onclick="closeModal('modal-empresa')">Cancelar</button>
 <button class="btn btn-primary" onclick="saveEmpresa()">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- MODAL OBRA -->
+<div class="modal-overlay" id="modal-obra">
+<div class="modal">
+<h3 id="obra-modal-title">Nueva Obra</h3>
+<input type="hidden" id="obra-edit-id">
+<div class="form-group"><label>Nombre de la Obra *</label><input type="text" id="obra-nombre" placeholder="Ej: Edificio Residencial A"></div>
+<div class="form-group"><label>Direccion</label><input type="text" id="obra-direccion" placeholder="Direccion de la obra"></div>
+<div class="form-group"><label>Cliente</label><input type="text" id="obra-cliente" placeholder="Nombre del cliente"></div>
+<div class="form-group"><label>Estado</label><select id="obra-estado"><option value="Activa">Activa</option><option value="Pausada">Pausada</option><option value="Finalizada">Finalizada</option></select></div>
+<div class="form-group"><label>Notas</label><input type="text" id="obra-notas" placeholder="Observaciones"></div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-obra')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveObra()">Guardar</button>
 </div>
 </div>
 </div>
@@ -370,6 +418,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <input type="hidden" id="med-edit-id">
 <div class="form-group"><label>Fecha</label><input type="date" id="med-fecha"></div>
 <div class="form-group"><label>Empresa Instaladora *</label><select id="med-empresa"></select></div>
+<div class="form-group"><label>Obra</label><select id="med-obra"></select></div>
 <div style="background:#E1F5FE;border-radius:8px;padding:12px;margin-bottom:10px">
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
 <div style="flex:1;min-width:200px" class="search-picker">
@@ -403,6 +452,7 @@ let materials = JSON.parse(localStorage.getItem('mat_data') || '[]');
 let mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
 let matFilter = 'all';
 let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
+let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let tempMedicionLineas = [];
 let _db=null;let _dbRef=null;let _syncing=false;let _ready=false;
 
@@ -418,8 +468,9 @@ function save(){
   localStorage.setItem('mat_data',JSON.stringify(materials));
   localStorage.setItem('med_data',JSON.stringify(mediciones));
   localStorage.setItem('emp_data',JSON.stringify(empresas));
+  localStorage.setItem('obras_data',JSON.stringify(obras));
   if(_dbRef&&!_syncing){
-    _dbRef.set({materials,mediciones,empresas}).catch(e=>console.warn('Firebase sync error',e));
+    _dbRef.set({materials,mediciones,empresas,obras}).catch(e=>console.warn('Firebase sync error',e));
   }
 }
 
@@ -436,9 +487,11 @@ function initFirebase(){
         if(r.materials)materials=r.materials;
         if(r.mediciones)mediciones=r.mediciones;
         if(r.empresas)empresas=r.empresas;
+        if(r.obras)obras=r.obras;
         localStorage.setItem('mat_data',JSON.stringify(materials));
         localStorage.setItem('med_data',JSON.stringify(mediciones));
         localStorage.setItem('emp_data',JSON.stringify(empresas));
+        localStorage.setItem('obras_data',JSON.stringify(obras));
         _syncing=false;
         if(!_ready){_ready=true;renderAll()}
       }
@@ -451,11 +504,12 @@ function renderAll(){
   const p=document.querySelector('.page.active');
   if(p){const id=p.id.replace('page-','');
     if(id==='dashboard')renderDashboard();
+    if(id==='obras')renderObras();
     if(id==='empresas')renderEmpresas();
     if(id==='materiales')renderMaterials();
     if(id==='mediciones')renderMediciones();
     if(id==='estadisticas')renderEstadisticas();}
-  populateEmpresaReportSelect();populateEmpresaFilterSelect();
+  populateEmpresaReportSelect();populateEmpresaFilterSelect();populateObraSelects();
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -464,11 +518,12 @@ function showPage(id){
 document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
 document.getElementById('page-'+id).classList.add('active');
 document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-const pages=['dashboard','empresas','materiales','mediciones','estadisticas','reportes'];
+const pages=['dashboard','obras','empresas','materiales','mediciones','estadisticas','reportes'];
 const idx=pages.indexOf(id);
 if(idx>=0)document.querySelectorAll('.nav-btn')[idx].classList.add('active');
 document.querySelector('.sidebar').classList.remove('open');
 if(id==='dashboard')renderDashboard();
+if(id==='obras')renderObras();
 if(id==='empresas')renderEmpresas();
 if(id==='materiales')renderMaterials();
 if(id==='mediciones')renderMediciones();
@@ -532,6 +587,56 @@ document.getElementById('empresas-list').innerHTML=list.length?list.map(e=>`<tr>
 <td>${e.contacto||'-'}</td><td>${e.telefono||'-'}</td><td>${e.email||'-'}</td>
 <td><button class="btn btn-warning" onclick="editEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
 </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay empresas registradas</td></tr>';
+}
+
+function openObraModal(){
+document.getElementById('obra-edit-id').value='';
+document.getElementById('obra-modal-title').textContent='Nueva Obra';
+document.getElementById('obra-nombre').value='';
+document.getElementById('obra-direccion').value='';
+document.getElementById('obra-cliente').value='';
+document.getElementById('obra-estado').value='Activa';
+document.getElementById('obra-notas').value='';
+openModal('modal-obra');
+}
+
+function editObra(id){
+const o=obras.find(x=>x.id===id);
+document.getElementById('obra-edit-id').value=id;
+document.getElementById('obra-modal-title').textContent='Editar Obra';
+document.getElementById('obra-nombre').value=o.nombre;
+document.getElementById('obra-direccion').value=o.direccion||'';
+document.getElementById('obra-cliente').value=o.cliente||'';
+document.getElementById('obra-estado').value=o.estado||'Activa';
+document.getElementById('obra-notas').value=o.notas||'';
+openModal('modal-obra');
+}
+
+function saveObra(){
+const nombre=document.getElementById('obra-nombre').value.trim();
+if(!nombre){alert('Introduce un nombre de obra');return}
+const data={nombre,direccion:document.getElementById('obra-direccion').value.trim(),cliente:document.getElementById('obra-cliente').value.trim(),estado:document.getElementById('obra-estado').value,notas:document.getElementById('obra-notas').value.trim()};
+const editId=document.getElementById('obra-edit-id').value;
+if(editId){const idx=obras.findIndex(x=>x.id===editId);obras[idx]={...obras[idx],...data}}
+else{data.id='ob_'+Date.now();data.fechaCreacion=new Date().toISOString().split('T')[0];obras.push(data)}
+save();closeModal('modal-obra');renderObras();toast('Obra guardada');
+}
+
+function deleteObra(id){
+if(!confirm('Eliminar esta obra?'))return;
+obras=obras.filter(x=>x.id!==id);
+save();renderObras();toast('Obra eliminada');
+}
+
+function renderObras(){
+const q=(document.getElementById('obra-search')?.value||'').toLowerCase();
+const list=obras.filter(o=>!q||o.nombre.toLowerCase().includes(q)||(o.direccion||'').toLowerCase().includes(q)||(o.cliente||'').toLowerCase().includes(q));
+document.getElementById('obras-list').innerHTML=list.length?list.map(o=>`<tr>
+<td><strong>${o.nombre}</strong></td>
+<td>${o.direccion||'-'}</td><td>${o.cliente||'-'}</td>
+<td><span class="tag tag-${o.estado==='Activa'?'elec':o.estado==='Pausada'?'cal':'font'}">${o.estado}</span></td>
+<td><button class="btn btn-warning" onclick="editObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">No hay obras registradas</td></tr>';
 }
 
 function openMaterialModal(id){
@@ -649,6 +754,7 @@ document.getElementById('med-obs').value='';
 document.getElementById('med-mat-search').value='';
 tempMedicionLineas=[];
 populateEmpresaSelect('med-empresa');
+populateObraSelect('med-obra');
 filterMaterialsForMedicion();
 renderTempMedLineas();
 openModal('modal-medicion');
@@ -715,6 +821,8 @@ document.getElementById('med-modal-title').textContent='Editar Medicion';
 document.getElementById('med-fecha').value=m.fecha;
 populateEmpresaSelect('med-empresa');
 document.getElementById('med-empresa').value=m.empresaId||'';
+populateObraSelect('med-obra');
+document.getElementById('med-obra').value=m.obraId||'';
 document.getElementById('med-cat').value=m.categoria;
 filterMaterialsForMedicion();
 tempMedicionLineas=[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}];
@@ -726,18 +834,20 @@ openModal('modal-medicion');
 function saveMedicion(){
 const fecha=document.getElementById('med-fecha').value;
 const empresaId=document.getElementById('med-empresa').value;
+const obraId=document.getElementById('med-obra').value;
 if(!fecha){alert('Selecciona una fecha');return}
 if(!tempMedicionLineas.length){alert('Agrega al menos un material');return}
 const emp=empresas.find(e=>e.id===empresaId);
+const ob=obras.find(o=>o.id===obraId);
 const editId=document.getElementById('med-edit-id').value;
 const obs=document.getElementById('med-obs').value.trim();
 if(editId){
 const idx=mediciones.findIndex(x=>x.id===editId);
 const l=tempMedicionLineas[0];
-mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs};
+mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs};
 }else{
 tempMedicionLineas.forEach(l=>{
-mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs});
+mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad,obs});
 });
 }
 tempMedicionLineas=[];
@@ -753,19 +863,21 @@ save();renderMediciones();toast('Medicion eliminada');
 function renderMediciones(){
 const fm=document.getElementById('filter-mes').value;
 const fe=document.getElementById('filter-empresa-med').value;
+const fo=document.getElementById('filter-obra-med').value;
 const fc=document.getElementById('filter-cat-med').value;
 let list=[...mediciones];
 if(fm)list=list.filter(m=>m.fecha.startsWith(fm));
 if(fe)list=list.filter(m=>m.empresaId===fe);
+if(fo)list=list.filter(m=>m.obraId===fo);
 if(fc)list=list.filter(m=>m.categoria===fc);
 list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 document.getElementById('mediciones-list').innerHTML=
 (list.length?list.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr>
-<td>${m.fecha}</td><td>${m.empresa||'-'}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td>
+<td>${m.fecha}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td>
 <td><span class="tag tag-${m.categoria==='Electricidad'?'elec':m.categoria==='PCI'?'pci':m.categoria==='Fontaneria'?'font':'clim'}">${m.categoria}</span></td>
 <td>${m.cantidad}</td><td>${m.unidad}</td>
 <td><button class="btn btn-warning" onclick="editMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">E</button> <button class="btn btn-danger" onclick="deleteMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
-</tr>`}).join(''):'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
+</tr>`}).join(''):'<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
 }
 
 function renderDashboard(){
@@ -780,11 +892,12 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card" style="background:linear-gradient(135deg,#29B6F6,#4FC3F7)"><div class="stat-icon">&#9729;&#65039;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Climatizacion').length}</div><div class="stat-label">Materiales Climatizacion</div></div>
 <div class="stat-card pci"><div class="stat-icon">&#128293;</div><div class="stat-value">${materials.filter(m=>m.categoria==='PCI').length}</div><div class="stat-label">Materiales PCI</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#F57F17,#FFCA28)"><div class="stat-icon">&#128207;</div><div class="stat-value">${totalCantMes.toFixed(1)}</div><div class="stat-label">Cant. Material Mes</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#00897B,#4DB6AC)"><div class="stat-icon">&#128230;</div><div class="stat-value">${mediciones.reduce((s,m)=>s+m.cantidad,0).toFixed(1)}</div><div class="stat-label">Cantidad Total</div></div>`;
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
-document.getElementById('recent-list').innerHTML=recent.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr><td>${m.fecha}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td><td>${m.cantidad} ${m.unidad}</td><td>${m.empresa||'-'}</td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
+document.getElementById('recent-list').innerHTML=recent.map(m=>{const mat=materials.find(x=>x.nombre===m.material);const imgSrc=mat?getMaterialImg(mat):'';return`<tr><td>${m.fecha}</td><td><div style="display:flex;align-items:center;gap:6px">${imgSrc?'<img src="'+imgSrc+'" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0">':''}${m.material}</div></td><td>${m.cantidad} ${m.unidad}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
 const cats=[{n:'Electricidad',c:'#4FC3F7'},{n:'Fontaneria',c:'#66BB6A'},{n:'Calefaccion',c:'#29B6F6'},{n:'Climatizacion',c:'#FFA726'},{n:'PCI',c:'#EF5350'}];
 const maxMat=Math.max(...cats.map(c=>materials.filter(m=>m.categoria===c.n).length),1);
 document.getElementById('cat-bars').innerHTML=cats.map(c=>{
@@ -843,34 +956,51 @@ document.getElementById('top-materials').innerHTML=topList.length?topList.map(([
 function generatePDF(type){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
-const hdr=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
+const hdr=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
 let data=[],title='';
 const hoy=new Date();
 
 if(type==='day'){
 const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
+const wo=document.getElementById('rpt-day-obra').value;
 title='Reporte Diario - '+d;
-data=mediciones.filter(m=>m.fecha===d).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+let list=mediciones.filter(m=>m.fecha===d);
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
 }else if(type==='week'){
 const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
+const wo=document.getElementById('rpt-week-obra').value;
 const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);
 const fin=new Date(ini);fin.setDate(ini.getDate()+6);
 const fiS=ini.toISOString().split('T')[0],ffS=fin.toISOString().split('T')[0];
 title='Reporte Semanal - '+fiS+' al '+ffS;
-data=mediciones.filter(m=>m.fecha>=fiS&&m.fecha<=ffS).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+let list=mediciones.filter(m=>m.fecha>=fiS&&m.fecha<=ffS);
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
 }else if(type==='month'){
 const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
+const wo=document.getElementById('rpt-month-obra').value;
 title='Reporte Mensual - '+m;
-data=mediciones.filter(m=>m.fecha.startsWith(m)).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+let list=mediciones.filter(m=>m.fecha.startsWith(m));
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
 }else if(type==='year'){
 const y=document.getElementById('rpt-year').value||hoy.getFullYear();
+const wo=document.getElementById('rpt-year-obra').value;
 title='Reporte Anual - '+y;
-data=mediciones.filter(m=>m.fecha.startsWith(y)).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+let list=mediciones.filter(m=>m.fecha.startsWith(y));
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
 }else if(type==='empresa'){
 const empId=document.getElementById('rpt-empresa').value;
 const emp=empresas.find(e=>e.id===empId);
 title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
-data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
+}else if(type==='obra'){
+const obraId=document.getElementById('rpt-obra').value;
+const ob=obras.find(o=>o.id===obraId);
+title='Mediciones por Obra - '+(ob?ob.nombre:'Todas');
+data=obraId?mediciones.filter(m=>m.obraId===obraId).map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]):mediciones.map(m=>[m.fecha,m.empresa||'-',m.obra||'-',m.material,m.categoria,m.cantidad,m.unidad]);
 }else{
 title='Listado de Materiales';
 hdr.length=0;hdr.push('Nombre','Categoria','Unidad','Descripcion');
@@ -893,32 +1023,50 @@ const hoy=new Date();
 
 if(type==='day'){
 const d=document.getElementById('rpt-day-date').value||hoy.toISOString().split('T')[0];
+const wo=document.getElementById('rpt-day-obra').value;
 title='Reporte Diario - '+d;
-headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
-data=mediciones.filter(m=>m.fecha===d).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+let list=mediciones.filter(m=>m.fecha===d);
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
 }else if(type==='week'){
 const d=new Date(document.getElementById('rpt-week-date').value||hoy.toISOString().split('T')[0]);
+const wo=document.getElementById('rpt-week-obra').value;
 const ini=new Date(d);ini.setDate(d.getDate()-d.getDay()+1);
 const fin=new Date(ini);fin.setDate(ini.getDate()+6);
 title='Reporte Semanal - '+ini.toISOString().split('T')[0]+' al '+fin.toISOString().split('T')[0];
-headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
-data=mediciones.filter(m=>m.fecha>=ini.toISOString().split('T')[0]&&m.fecha<=fin.toISOString().split('T')[0]).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+let list=mediciones.filter(m=>m.fecha>=ini.toISOString().split('T')[0]&&m.fecha<=fin.toISOString().split('T')[0]);
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
 }else if(type==='month'){
 const m=document.getElementById('rpt-month-date').value||hoy.toISOString().substring(0,7);
+const wo=document.getElementById('rpt-month-obra').value;
 title='Reporte Mensual - '+m;
-headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
-data=mediciones.filter(m=>m.fecha.startsWith(m)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+let list=mediciones.filter(m=>m.fecha.startsWith(m));
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
 }else if(type==='year'){
 const y=document.getElementById('rpt-year').value||hoy.getFullYear();
+const wo=document.getElementById('rpt-year-obra').value;
 title='Reporte Anual - '+y;
-headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
-data=mediciones.filter(m=>m.fecha.startsWith(y)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+let list=mediciones.filter(m=>m.fecha.startsWith(y));
+if(wo)list=list.filter(m=>m.obraId===wo);
+data=list.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
 }else if(type==='empresa'){
 const empId=document.getElementById('rpt-empresa').value;
 const emp=empresas.find(e=>e.id===empId);
 title='Mediciones por Empresa - '+(emp?emp.nombre:'Todas');
-headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad'];
-data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+data=empId?mediciones.filter(m=>m.empresaId===empId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
+}else if(type==='obra'){
+const obraId=document.getElementById('rpt-obra').value;
+const ob=obras.find(o=>o.id===obraId);
+title='Mediciones por Obra - '+(ob?ob.nombre:'Todas');
+headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
+data=obraId?mediciones.filter(m=>m.obraId===obraId).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad})):mediciones.map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad}));
 }else{
 title='Listado de Materiales';
 headers=['Nombre','Categoria','Unidad','Descripcion'];
@@ -928,7 +1076,7 @@ data=materials.map(m=>({Nombre:m.nombre,Categoria:m.categoria,Unidad:m.unidad,De
 const wsData=[headers,...data.map(d=>Object.values(d))];
 
 const ws=XLSX.utils.aoa_to_sheet(wsData);
-ws['!cols']=[{wch:12},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
+ws['!cols']=[{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
 XLSX.writeFile(wb,'medicion-'+type+'-'+new Date().toISOString().split('T')[0]+'.xlsx');
@@ -936,28 +1084,30 @@ toast('Excel exportado correctamente');
 }
 
 function exportMedicionesExcel(){
-const headers=['Fecha','Empresa','Material','Categoria','Cantidad','Unidad','Observaciones'];
-const data=mediciones.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad,Observaciones:m.obs||''}));
+const headers=['Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad','Observaciones'];
+const data=mediciones.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(m=>({Fecha:m.fecha,Empresa:m.empresa||'-',Obra:m.obra||'-',Material:m.material,Categoria:m.categoria,Cantidad:m.cantidad,Unidad:m.unidad,Observaciones:m.obs||''}));
 const wsData=[headers,...data.map(d=>Object.values(d))];
 const ws=XLSX.utils.aoa_to_sheet(wsData);
-ws['!cols']=[{wch:12},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10},{wch:20}];
+ws['!cols']=[{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10},{wch:20}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,'Mediciones');
 XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='12.0';
+const APP_VERSION='13.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
 localStorage.removeItem('mat_data');
 localStorage.removeItem('med_data');
 localStorage.removeItem('emp_data');
+localStorage.removeItem('obras_data');
 localStorage.setItem('app_version',APP_VERSION);
 }
 materials = JSON.parse(localStorage.getItem('mat_data') || '[]');
 mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
 empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
+obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 
 const yrSel=document.getElementById('rpt-year');
 const yr=new Date().getFullYear();
@@ -974,6 +1124,21 @@ sel.innerHTML='<option value="">Todas las empresas</option>'+empresas.map(e=>`<o
 function populateEmpresaFilterSelect(){
 const sel=document.getElementById('filter-empresa-med');
 sel.innerHTML='<option value="">Todas las empresas</option>'+empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+}
+
+function populateObraSelect(selectId){
+const sel=document.getElementById(selectId);
+sel.innerHTML='<option value="">Sin obra</option>'+obras.map(o=>`<option value="${o.id}">${o.nombre}</option>`).join('');
+}
+
+function populateObraSelects(){
+const ids=['rpt-day-obra','rpt-week-obra','rpt-month-obra','rpt-year-obra','rpt-obra','filter-obra-med'];
+ids.forEach(id=>{
+const sel=document.getElementById(id);
+if(!sel)return;
+const firstOpt=id.startsWith('filter')?'Todas las obras':id.startsWith('rpt-obra')?'Seleccionar obra':'Todas las obras';
+sel.innerHTML='<option value="">'+firstOpt+'</option>'+obras.map(o=>`<option value="${o.id}">${o.nombre}</option>`).join('');
+});
 }
 
 const _IMG={
@@ -1031,6 +1196,7 @@ materials.forEach(m=>{m.img=_getIcon(m.categoria,m.nombre)});
 save();
 populateEmpresaReportSelect();
 populateEmpresaFilterSelect();
+populateObraSelects();
 document.getElementById('med-mat-search').addEventListener('input',searchMaterialForMedicion);
 document.getElementById('med-mat-search').addEventListener('focus',searchMaterialForMedicion);
 document.addEventListener('click',function(e){
