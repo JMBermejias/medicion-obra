@@ -1075,7 +1075,7 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='15.0';
+const APP_VERSION='16.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
   mediciones.forEach(m=>{
@@ -1084,10 +1084,8 @@ if(savedVersion!==APP_VERSION){
       delete m.materialId;delete m.material;delete m.categoria;delete m.unidad;delete m.cantidad;
     }
   });
-  let maxSerie=0;
-  mediciones.forEach(m=>{if(m.serie&&m.serie>maxSerie)maxSerie=m.serie});
-  if(maxSerie>=medSerieCounter)medSerieCounter=maxSerie;
-  mediciones.forEach(m=>{if(!m.serie){m.serie=nextSerie()}});
+  medSerieCounter=0;
+  mediciones.forEach(m=>{m.serie=nextSerie()});
   localStorage.setItem('med_serie_counter',medSerieCounter);
   localStorage.setItem('med_data',JSON.stringify(mediciones));
   localStorage.setItem('app_version',APP_VERSION);
