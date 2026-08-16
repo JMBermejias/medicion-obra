@@ -24,6 +24,10 @@ DATA_DIRS = [
     ('var/lib/medicion-obra', 0o755),
     ('usr/lib/medicion-obra', 0o755),
     ('usr/share/doc/medicion-obra', 0o755),
+    ('usr/share/applications', 0o755),
+    ('usr/share/icons/hicolor/512x512/apps', 0o755),
+    ('usr/share/icons/hicolor/256x256/apps', 0o755),
+    ('usr/share/icons/hicolor/192x192/apps', 0o755),
 ]
 
 DATA_FILES = [
@@ -41,6 +45,14 @@ DATA_FILES = [
      'etc/nginx/sites-available/medicion-obra', 0o644),
     (os.path.join(PKG, 'lib', 'systemd', 'system', 'medicion-obra.service'),
      'lib/systemd/system/medicion-obra.service', 0o644),
+    (os.path.join(PKG, 'usr', 'share', 'applications', 'medicion-obra.desktop'),
+     'usr/share/applications/medicion-obra.desktop', 0o644),
+    (os.path.join(PKG, 'usr', 'share', 'icons', 'hicolor', '512x512', 'apps', 'medicion-obra.png'),
+     'usr/share/icons/hicolor/512x512/apps/medicion-obra.png', 0o644),
+    (os.path.join(PKG, 'usr', 'share', 'icons', 'hicolor', '256x256', 'apps', 'medicion-obra.png'),
+     'usr/share/icons/hicolor/256x256/apps/medicion-obra.png', 0o644),
+    (os.path.join(PKG, 'usr', 'share', 'icons', 'hicolor', '192x192', 'apps', 'medicion-obra.png'),
+     'usr/share/icons/hicolor/192x192/apps/medicion-obra.png', 0o644),
     (os.path.join(PKG, 'usr', 'share', 'doc', 'medicion-obra', 'copyright'),
      'usr/share/doc/medicion-obra/copyright', 0o644),
     (os.path.join(ROOT, 'LICENSE'),
