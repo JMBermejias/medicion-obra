@@ -23,6 +23,14 @@ case "$1" in
       nginx -t >/dev/null 2>&1 || true
       systemctl reload nginx >/dev/null 2>&1 || systemctl restart nginx >/dev/null 2>&1 || true
     fi
+
+    # Refrescar el icono y el lanzador en el menu de aplicaciones
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+      gtk-update-icon-cache /usr/share/icons/hicolor >/dev/null 2>&1 || true
+    fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+    fi
     ;;
 esac
 
