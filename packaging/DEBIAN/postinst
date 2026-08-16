@@ -1,0 +1,29 @@
+#!/bin/sh
+# Medicion Obra - postinst
+# Copyright (C) 2026 JMBernabeu - GPL-3.0-or-later
+set -e
+
+case "$1" in
+  configure)
+    mkdir -p /var/lib/medicion-obra
+    chown -R www-data:www-data /var/lib/medicion-obra
+    chmod 755 /var/lib/medicion-obra
+
+    # Activar el sitio nginx de la app
+    ln -sf /etc/nginx/sites-available/medicion-obra /etc/nginx/sites-enabled/medicion-obra
+    rm -f /etc/nginx/sites-enabled/default
+
+    # Activar e iniciar el servicio de la API local
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    systemctl enable medicion-obra.service >/dev/null 2>&1 || true
+    systemctl restart medicion-obra.service >/dev/null 2>&1 || true
+
+    # Aplicar la configuracion de nginx
+    if command -v nginx >/dev/null 2>&1; then
+      nginx -t >/dev/null 2>&1 || true
+      systemctl reload nginx >/dev/null 2>&1 || systemctl restart nginx >/dev/null 2>&1 || true
+    fi
+    ;;
+esac
+
+exit 0
