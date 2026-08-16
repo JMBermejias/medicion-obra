@@ -16,6 +16,16 @@ OUT_DIR = os.path.join(ROOT, 'dist')
 OUT_NAME = 'medicion-obra_1.0.0_all.deb'
 
 # (fuente, destino en el paquete, modo, enlazar-a-root)
+# Directorios que deben crearse con su propietario y permisos correctos
+# antes de desempaquetar los ficheros (imprescindible si no existe /var/www).
+DATA_DIRS = [
+    ('var/www', 0o755),
+    ('var/www/medicion-obra', 0o755),
+    ('var/lib/medicion-obra', 0o755),
+    ('usr/lib/medicion-obra', 0o755),
+    ('usr/share/doc/medicion-obra', 0o755),
+]
+
 DATA_FILES = [
     (os.path.join(ROOT, 'mediotec.html'), 'var/www/medicion-obra/mediotec.html', 0o644),
     (os.path.join(ROOT, 'sw.js'), 'var/www/medicion-obra/sw.js', 0o644),
@@ -37,7 +47,7 @@ DATA_FILES = [
      'usr/share/doc/medicion-obra/LICENSE', 0o644),
 ]
 
-CONTROL_SCRIPTS = ['postinst', 'prerm', 'postrm']
+CONTROL_SCRIPTS = ['preinst', 'postinst', 'prerm', 'postrm']
 CONTROL_FILES = ['control', 'conffiles', 'md5sums'] + CONTROL_SCRIPTS
 
 MTIME = 0  # reproducible
@@ -82,6 +92,8 @@ def make_control_tar():
 def make_data_tar():
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode='w:gz', format=tarfile.GNU_FORMAT) as tar:
+        for name, mode in DATA_DIRS:
+            add_dir(tar, name, mode)
         for src, dest, mode in DATA_FILES:
             if not os.path.exists(src):
                 raise SystemExit('Falta el fichero fuente: %s' % src)
@@ -98,6 +110,16 @@ def add_bytes(tar, name, data, mode):
     info.gid = 0
     info.mtime = MTIME
     tar.addfile(info, io.BytesIO(data))
+
+
+def add_dir(tar, name, mode):
+    info = tarfile.TarInfo(name + '/')
+    info.type = tarfile.DIRTYPE
+    info.mode = mode
+    info.uid = 0
+    info.gid = 0
+    info.mtime = MTIME
+    tar.addfile(info)
 
 
 def ar_header(name, size, mode=0o100644):
