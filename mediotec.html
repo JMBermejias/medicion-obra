@@ -18,6 +18,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -434,7 +436,9 @@ let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
-const API_BASE='/api/';
+let _db=null;let _dbRef=null;
+
+const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
 
 function nextSerie(){medSerieCounter++;localStorage.setItem('med_serie_counter',medSerieCounter);return medSerieCounter}
 function getSerieStr(n){return String(n).padStart(5,'0')}
@@ -462,31 +466,35 @@ function saveLocal(){
 
 function save(){
   saveLocal();
-  apiSave();
+  if(_dbRef&&!_syncing){
+    _dbRef.set({materials,mediciones,empresas,obras}).catch(e=>console.warn('Firebase sync error',e));
+  }
 }
 
-function apiSave(){
-  if(!_ready||_syncing)return;
-  fetch(API_BASE+'data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({materials,mediciones,empresas,obras})}).catch(e=>console.warn('API save error',e));
-}
-
-function initApiSync(){
-  fetch(API_BASE+'data').then(r=>{if(!r.ok)throw new Error('API no disponible');return r.json()}).then(r=>{
-    _syncing=true;
-    const empty=!r.materials&&!r.mediciones&&!r.empresas&&!r.obras;
-    if(r.materials)materials=r.materials;
-    if(r.mediciones)mediciones=r.mediciones;
-    if(r.empresas)empresas=r.empresas;
-    if(r.obras)obras=r.obras;
-    saveLocal();
-    _syncing=false;
+function initFirebase(){
+  if(!FB_CONFIG.apiKey||!FB_CONFIG.databaseURL)return;
+  try{
+    firebase.initializeApp(FB_CONFIG);
+    _db=firebase.database();
+    _dbRef=_db.ref('appdata');
+    _dbRef.on('value',snap=>{
+      const r=snap.val();
+      if(r){
+        _syncing=true;
+        if(r.materials)materials=r.materials;
+        if(r.mediciones)mediciones=r.mediciones;
+        if(r.empresas)empresas=r.empresas;
+        if(r.obras)obras=r.obras;
+        localStorage.setItem('mat_data',JSON.stringify(materials));
+        localStorage.setItem('med_data',JSON.stringify(mediciones));
+        localStorage.setItem('emp_data',JSON.stringify(empresas));
+        localStorage.setItem('obras_data',JSON.stringify(obras));
+        _syncing=false;
+        if(!_ready){_ready=true;renderAll()}
+      }
+    });
     _ready=true;
-    if(empty)apiSave();
-    renderAll();
-  }).catch(e=>{
-    console.warn('API sync error',e);
-    _ready=true;
-  });
+  }catch(e){console.warn('Firebase error',e)}
 }
 
 function renderAll(){
@@ -1104,7 +1112,7 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='19.0';
+const APP_VERSION='20.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
   mediciones.forEach(m=>{
@@ -1218,7 +1226,7 @@ r.classList.remove('show');
 });
 renderDashboard();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
-initApiSync();
+initFirebase();
 </script>
 <footer class="app-footer">
   <span>© 2026 JMBernabeu</span>

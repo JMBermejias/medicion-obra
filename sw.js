@@ -1,7 +1,7 @@
 // Medicion Obra - Service Worker
 // Copyright (C) 2026 JMBernabeu
 // License: GNU General Public License v3.0 or later (see LICENSE)
-const CACHE = 'medicion-obra-v3';
+const CACHE = 'medicion-obra-v4';
 const ASSETS = [
   './',
   './mediotec.html',
@@ -10,7 +10,9 @@ const ASSETS = [
   './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js'
 ];
 
 self.addEventListener('install', e => {
@@ -29,6 +31,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.url.indexOf('/api/') !== -1) return;
+  if (e.request.url.indexOf('firebaseio.com') !== -1) return;
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request))
   );
