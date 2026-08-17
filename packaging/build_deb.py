@@ -28,6 +28,7 @@ DATA_DIRS = [
     ('usr/share/icons/hicolor/512x512/apps', 0o755),
     ('usr/share/icons/hicolor/256x256/apps', 0o755),
     ('usr/share/icons/hicolor/192x192/apps', 0o755),
+    ('etc/medicion-obra', 0o755),
 ]
 
 DATA_FILES = [

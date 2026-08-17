@@ -1,11 +1,16 @@
-# Medicion Obra - sitio nginx (solo localhost)
+# Medicion Obra - sitio nginx
 # Copyright (C) 2026 JMBernabeu - GPL-3.0-or-later
 server {
-    listen 127.0.0.1:80;
-    server_name localhost;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
 
     root /var/www/medicion-obra;
     index mediotec.html;
+
+    # Autenticacion basica (protege el acceso desde internet)
+    auth_basic "Medicion Obra";
+    auth_basic_user_file /etc/medicion-obra/.htpasswd;
 
     location / {
         try_files $uri $uri/ /mediotec.html;

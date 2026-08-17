@@ -9,6 +9,24 @@ case "$1" in
     chown -R www-data:www-data /var/lib/medicion-obra
     chmod 755 /var/lib/medicion-obra
 
+    # Crear credenciales de acceso (solo si no existen)
+    mkdir -p /etc/medicion-obra
+    if [ ! -f /etc/medicion-obra/.htpasswd ]; then
+      PASS=$(openssl rand -base64 12 | tr -d '/+=' | head -c 12)
+      HASH=$(openssl passwd -apr1 "$PASS" 2>/dev/null)
+      echo "admin:$HASH" > /etc/medicion-obra/.htpasswd
+      chmod 644 /etc/medicion-obra/.htpasswd
+      echo ""
+      echo "==========================================="
+      echo " Credenciales de Medicion Obra"
+      echo "   Usuario:     admin"
+      echo "   Contrasena:  $PASS"
+      echo " Guarda esta informacion para acceder"
+      echo " desde el movil o desde internet."
+      echo "==========================================="
+      echo ""
+    fi
+
     # Activar el sitio nginx de la app
     ln -sf /etc/nginx/sites-available/medicion-obra /etc/nginx/sites-enabled/medicion-obra
     rm -f /etc/nginx/sites-enabled/default
