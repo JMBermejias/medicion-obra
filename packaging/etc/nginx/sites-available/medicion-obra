@@ -8,11 +8,15 @@ server {
     root /var/www/medicion-obra;
     index mediotec.html;
 
-    # Autenticacion basica (protege el acceso desde internet)
-    auth_basic "Medicion Obra";
-    auth_basic_user_file /etc/medicion-obra/.htpasswd;
-
     location / {
+        # Autenticacion basica solo desde fuera (protege acceso desde internet)
+        set $block_auth "";
+        if ($remote_addr = 127.0.0.1) { set $block_auth "local"; }
+        if ($remote_addr = ::1) { set $block_auth "local"; }
+        if ($block_auth = "") {
+            auth_basic "Medicion Obra";
+            auth_basic_user_file /etc/medicion-obra/.htpasswd;
+        }
         try_files $uri $uri/ /mediotec.html;
     }
 
