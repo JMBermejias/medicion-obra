@@ -144,6 +144,9 @@ tr:hover{background:rgba(79,195,247,0.05)}
 .app-footer{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;align-items:center;padding:12px 16px;margin-top:20px;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-light)}
 .app-footer a{color:var(--primary);text-decoration:none}
 .app-footer a:hover{text-decoration:underline}
+#sync-status{font-weight:600}
+.sync-ok{color:#2e7d32}
+.sync-off{color:#c62828}
 </style>
 </head>
 <body>
@@ -436,7 +439,7 @@ let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
-let _db=null;let _dbRef=null;
+let _db=null;let _dbRef=null;let _fbConnected=false;
 
 const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
 
@@ -477,6 +480,10 @@ function initFirebase(){
     firebase.initializeApp(FB_CONFIG);
     _db=firebase.database();
     _dbRef=_db.ref('appdata');
+    _db.ref('.info/connected').on('value',snap=>{
+      _fbConnected=snap.val()===true;
+      updateSyncStatus();
+    });
     _dbRef.on('value',snap=>{
       const r=snap.val();
       if(r){
@@ -496,6 +503,13 @@ function initFirebase(){
     });
     _ready=true;
   }catch(e){console.warn('Firebase error',e)}
+}
+
+function updateSyncStatus(){
+  const el=document.getElementById('sync-status');
+  if(!el)return;
+  if(_fbConnected){el.textContent='Sincronizado';el.className='sync-ok'}
+  else{el.textContent='Sin conexion';el.className='sync-off'}
 }
 
 function renderAll(){
@@ -1228,8 +1242,24 @@ r.classList.remove('show');
 renderDashboard();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
 initFirebase();
+setInterval(function(){
+  if(_dbRef){_dbRef.once('value').then(snap=>{
+    const r=snap.val();
+    if(r){
+      _syncing=true;
+      if(r.materials)materials=r.materials;
+      if(r.mediciones)mediciones=r.mediciones;
+      if(r.empresas)empresas=r.empresas;
+      if(r.obras)obras=r.obras;
+      saveLocal();
+      _syncing=false;
+      renderAll();
+    }
+  })}
+},30000);
 </script>
 <footer class="app-footer">
+  <span id="sync-status" class="sync-off">Sin conexion</span>
   <span>© 2026 JMBernabeu</span>
   <span>Software libre bajo la <a href="LICENSE" target="_blank" rel="noopener">Licencia Pública General de GNU v3 o posterior</a></span>
 </footer>
