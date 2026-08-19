@@ -490,7 +490,8 @@ function initFirebase(){
         localStorage.setItem('emp_data',JSON.stringify(empresas));
         localStorage.setItem('obras_data',JSON.stringify(obras));
         _syncing=false;
-        if(!_ready){_ready=true;renderAll()}
+        if(!_ready)_ready=true;
+        renderAll();
       }
     });
     _ready=true;

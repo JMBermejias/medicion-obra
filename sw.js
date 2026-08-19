@@ -1,7 +1,7 @@
 // Medicion Obra - Service Worker
 // Copyright (C) 2026 JMBernabeu
 // License: GNU General Public License v3.0 or later (see LICENSE)
-const CACHE = 'medicion-obra-v4';
+const CACHE = 'medicion-obra-v5';
 const ASSETS = [
   './',
   './mediotec.html',
@@ -32,6 +32,16 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.url.indexOf('/api/') !== -1) return;
   if (e.request.url.indexOf('firebaseio.com') !== -1) return;
+  if (e.request.url.indexOf('mediotec.html') !== -1 || e.request.url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then(r => {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return r;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request))
   );
