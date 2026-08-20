@@ -1,5 +1,5 @@
 [Unit]
-Description=Medicion Obra - API local (SQLite)
+Description=Medicion Obra - Servidor integrado (web + API SQLite)
 Documentation=https://github.com/JMBermejias/medicion-obra
 After=network.target
 
@@ -7,7 +7,7 @@ After=network.target
 Type=simple
 User=www-data
 Group=www-data
-ExecStart=/usr/bin/python3 /usr/lib/medicion-obra/medicion_server.py
+ExecStart=/usr/bin/python3 /usr/lib/medicion-obra/server.py
 WorkingDirectory=/usr/lib/medicion-obra
 Restart=on-failure
 RestartSec=3
