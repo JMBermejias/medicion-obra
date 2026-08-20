@@ -99,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', mime)
             self.send_header('Content-Length', str(len(content)))
-            if ext == '.html':
+            if ext == '.html' or filepath.endswith('sw.js'):
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             else:
                 self.send_header('Cache-Control', 'public, max-age=3600')
