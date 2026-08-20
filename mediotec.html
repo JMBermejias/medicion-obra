@@ -439,7 +439,8 @@ let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
-let _db=null;let _dbRef=null;let _fbConnected=false;
+let _db=null;let _dbRef=null;let _fbConnected=false;let _fbLastUpdate=0;
+const APP_VERSION='23';if(localStorage.getItem('app_version')!==APP_VERSION){localStorage.setItem('app_version',APP_VERSION);if('caches' in window){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())}}
 
 const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
 
@@ -499,6 +500,8 @@ function initFirebase(){
         _syncing=false;
         if(!_ready)_ready=true;
         renderAll();
+        if(_fbLastUpdate&&Date.now()-_fbLastUpdate>2000){toast('Datos sincronizados')}
+        _fbLastUpdate=Date.now();
       }
     });
     _ready=true;
@@ -508,8 +511,8 @@ function initFirebase(){
 function updateSyncStatus(){
   const el=document.getElementById('sync-status');
   if(!el)return;
-  if(_fbConnected){el.textContent='Sincronizado';el.className='sync-ok'}
-  else{el.textContent='Sin conexion';el.className='sync-off'}
+  if(_fbConnected){el.textContent='v'+APP_VERSION+' | Sincronizado';el.className='sync-ok'}
+  else{el.textContent='v'+APP_VERSION+' | Sin conexion';el.className='sync-off'}
 }
 
 function renderAll(){
@@ -1240,7 +1243,7 @@ r.classList.remove('show');
 });
 });
 renderDashboard();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(function(reg){reg.update()})}
 initFirebase();
 setInterval(function(){
   if(_dbRef){_dbRef.once('value').then(snap=>{
