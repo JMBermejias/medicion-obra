@@ -3,7 +3,8 @@ Version: 1.0.0
 Section: web
 Priority: optional
 Architecture: all
-Depends: nginx, python3 (>= 3.7), sqlite3
+Depends: nginx | nginx-light | nginx-full, python3 (>= 3.7)
+Recommends: sqlite3
 Maintainer: JMBernabeu <https://github.com/JMBermejias>
 Homepage: https://github.com/JMBermejias/medicion-obra
 Vcs-Git: https://github.com/JMBermejias/medicion-obra.git

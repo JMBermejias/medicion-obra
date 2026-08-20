@@ -9,6 +9,10 @@ server {
     index mediotec.html;
 
     location / {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+
         # Autenticacion basica solo desde fuera (protege acceso desde internet)
         set $block_auth "";
         if ($remote_addr = 127.0.0.1) { set $block_auth "local"; }
