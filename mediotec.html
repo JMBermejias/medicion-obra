@@ -385,6 +385,17 @@ tr:hover{background:rgba(79,195,247,0.05)}
 </div>
 </div>
 
+<!-- MODAL OBRA TRABAJOS -->
+<div class="modal-overlay" id="modal-obra-trabajos">
+<div class="modal" style="max-width:800px">
+<h3 id="obra-trabajos-title">Trabajos</h3>
+<div id="obra-trabajos-body" style="max-height:60vh;overflow-y:auto"></div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-obra-trabajos')">Cerrar</button>
+</div>
+</div>
+</div>
+
 <!-- MODAL ZONA -->
 <div class="modal-overlay" id="modal-zona">
 <div class="modal">
@@ -696,8 +707,25 @@ document.getElementById('obras-list').innerHTML=list.length?list.map(o=>`<tr>
 <td><strong>${o.nombre}</strong></td>
 <td>${o.direccion||'-'}</td><td>${o.cliente||'-'}</td>
 <td><span class="tag tag-${o.estado==='Activa'?'elec':o.estado==='Pausada'?'cal':'font'}">${o.estado}</span></td>
-<td><button class="btn btn-warning" onclick="editObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+<td><button class="btn btn-outline" onclick="showObraTrabajos('${o.id}')" style="padding:5px 10px;font-size:.75rem">Trabajos</button> <button class="btn btn-warning" onclick="editObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
 </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">No hay obras registradas</td></tr>';
+}
+
+function showObraTrabajos(obraId){
+const obra=obras.find(o=>o.id===obraId);
+if(!obra)return;
+const meds=mediciones.filter(m=>m.obraId===obraId);
+document.getElementById('obra-trabajos-title').textContent='Trabajos: '+obra.nombre;
+const body=document.getElementById('obra-trabajos-body');
+if(!meds.length){
+body.innerHTML='<p style="text-align:center;padding:20px;color:var(--text-light)">No hay mediciones registradas para esta obra</p>';
+}else{
+body.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Fecha</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Empresa</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Zona</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Materiales</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obs.</th></tr></thead><tbody>'+meds.map(m=>{
+const lineasHtml=(m.lineas||[]).map(l=>`<div>${l.material} (${l.categoria}) - ${l.cantidad} ${l.unidad}</div>`).join('');
+return `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.fecha||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.empresa||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.zona||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${lineasHtml||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obs||'-'}</td></tr>`;
+}).join('')+'</tbody></table>';
+}
+openModal('modal-obra-trabajos');
 }
 
 function openZonaModal(){
