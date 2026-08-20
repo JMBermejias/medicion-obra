@@ -18,6 +18,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -476,7 +478,9 @@ let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
 let _fbConnected=false;
-const APP_VERSION='28';if(localStorage.getItem('app_version')!==APP_VERSION){localStorage.setItem('app_version',APP_VERSION);if('caches' in window){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())}}
+let _db=null;let _dbRef=null;
+const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
+const APP_VERSION='31';if(localStorage.getItem('app_version')!==APP_VERSION){localStorage.setItem('app_version',APP_VERSION);if('caches' in window){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())}}
 
 function nextSerie(){medSerieCounter++;localStorage.setItem('med_serie_counter',medSerieCounter);return medSerieCounter}
 function getSerieStr(n){return String(n).padStart(5,'0')}
@@ -505,45 +509,52 @@ function saveLocal(){
 
 function save(){
   saveLocal();
-  fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({materials,mediciones,empresas,obras,zonas})}).catch(e=>console.warn('Sync error',e));
+  const payload={materials,mediciones,empresas,obras,zonas};
+  if(_dbRef){
+    _dbRef.set(payload).catch(e=>console.warn('Firebase save error',e));
+  }
+  fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
 }
 
 function initSync(){
-  _fbConnected=true;
-  updateSyncStatus();
-  fetch('/api/data').then(r=>r.json()).then(data=>{
-    if(data.materials)materials=data.materials;
-    if(data.mediciones)mediciones=data.mediciones;
-    if(data.empresas)empresas=data.empresas;
-    if(data.obras)obras=data.obras;
-    if(data.zonas)zonas=data.zonas;
-    saveLocal();
-    renderAll();
-    _ready=true;
-    toast('Datos sincronizados');
-  }).catch(e=>{
+  if(!FB_CONFIG.apiKey||!FB_CONFIG.databaseURL){_fbConnected=false;updateSyncStatus();return;}
+  try{
+    firebase.initializeApp(FB_CONFIG);
+    _db=firebase.database();
+    _dbRef=_db.ref('appdata');
+    _db.ref('.info/connected').on('value',snap=>{
+      _fbConnected=snap.val()===true;
+      updateSyncStatus();
+    });
+    _dbRef.on('value',snap=>{
+      const r=snap.val();
+      if(r){
+        if(r.materials)materials=r.materials;
+        if(r.mediciones)mediciones=r.mediciones;
+        if(r.empresas)empresas=r.empresas;
+        if(r.obras)obras=r.obras;
+        if(r.zonas)zonas=r.zonas;
+        saveLocal();
+        if(!_ready){toast('Datos sincronizados desde la nube');_ready=true;}
+        renderAll();
+      }
+    });
+  }catch(e){
+    console.warn('Firebase init error',e);
     _fbConnected=false;
     updateSyncStatus();
-    console.warn('API sync error',e);
-  });
-  setInterval(function(){
     fetch('/api/data').then(r=>r.json()).then(data=>{
-      if(data.materials)materials=data.materials;
-      if(data.mediciones)mediciones=data.mediciones;
-      if(data.empresas)empresas=data.empresas;
-      if(data.obras)obras=data.obras;
-      if(data.zonas)zonas=data.zonas;
-      saveLocal();
-      renderAll();
+      Object.keys(data).forEach(k=>{if(data[k]&&data[k].length>0)window[k]=data[k];});
+      saveLocal();renderAll();_ready=true;
     }).catch(()=>{});
-  },10000);
+  }
 }
 
 function updateSyncStatus(){
   const el=document.getElementById('sync-status');
   if(!el)return;
-  if(_fbConnected){el.textContent='v28 | Sincronizado';el.className='sync-ok'}
-  else{el.textContent='v28 | Sin conexion';el.className='sync-off'}
+  if(_fbConnected){el.textContent='v31 | Sincronizado';el.className='sync-ok'}
+  else{el.textContent='v31 | Sin conexion';el.className='sync-off'}
 }
 
 function renderAll(){
