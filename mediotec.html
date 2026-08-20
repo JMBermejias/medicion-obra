@@ -337,6 +337,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <select id="rpt-empresa" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las empresas</option></select>
 <select id="rpt-obra" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
 <select id="rpt-zona" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las zonas</option></select>
+<select id="rpt-subcontrata" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las subcontratas</option></select>
 <button class="btn btn-outline" onclick="clearRptFilters()" style="padding:6px 12px;font-size:.8rem">Limpiar</button>
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
@@ -349,7 +350,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 </div>
 <div id="rpt-count" style="font-size:.8rem;color:var(--text-light);margin-bottom:10px"></div>
 <div class="table-wrap">
-<table><thead><tr><th>N&ordm;</th><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Materiales</th></tr></thead>
+<table><thead><tr><th>N&ordm;</th><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Subcontrata</th><th>Materiales</th></tr></thead>
 <tbody id="rpt-preview-list"></tbody></table>
 </div>
 <div style="margin-top:15px">
@@ -620,7 +621,7 @@ function renderAll(){
     if(id==='zonas')renderZonas();
     if(id==='reportes')renderReportPreview();
     if(id==='estadisticas')renderEstadisticas();}
-  populateEmpresaReportSelect();populateEmpresaFilterSelect();populateObraSelects();populateZonaReportSelect();populateZonaFilterSelect();
+  populateEmpresaReportSelect();populateEmpresaFilterSelect();populateObraSelects();populateZonaReportSelect();populateZonaFilterSelect();populateSubcontrataReportSelect();
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -1276,17 +1277,19 @@ const dHasta=document.getElementById('rpt-hasta').value;
 const empId=document.getElementById('rpt-empresa').value;
 const obraId=document.getElementById('rpt-obra').value;
 const zonaId=document.getElementById('rpt-zona').value;
+const subId=document.getElementById('rpt-subcontrata').value;
 let list=[...mediciones];
 if(dDesde)list=list.filter(m=>m.fecha>=dDesde);
 if(dHasta)list=list.filter(m=>m.fecha<=dHasta);
 if(empId)list=list.filter(m=>m.empresaId===empId);
 if(obraId)list=list.filter(m=>m.obraId===obraId);
 if(zonaId)list=list.filter(m=>m.zonaId===zonaId);
+if(subId)list=list.filter(m=>m.subcontrataId===subId);
 list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 return list;
 }
 
-function expandMed(m){const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);return lines.map(l=>({serie:'N'+getSerieStr(m.serie||0),fecha:m.fecha,empresa:m.empresa||'-',obra:m.obra||'-',material:l.material,categoria:l.categoria,cantidad:l.cantidad,unidad:l.unidad}))}
+function expandMed(m){const lines=m.lineas||(m.materialId?[{material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);return lines.map(l=>({serie:'N'+getSerieStr(m.serie||0),fecha:m.fecha,empresa:m.empresa||'-',obra:m.obra||'-',subcontrata:m.subcontrata||'-',material:l.material,categoria:l.categoria,cantidad:l.cantidad,unidad:l.unidad}))}
 
 function aggregateMaterials(list){
 const map={};
@@ -1303,8 +1306,8 @@ document.getElementById('rpt-count').textContent=list.length+' mediciones | '+to
 document.getElementById('rpt-preview-list').innerHTML=list.length?list.map(m=>{
 const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
 const matText=lines.map(l=>l.material+' ('+l.cantidad+' '+l.unidad+')').join(', ');
-return`<tr><td><strong>N&ordm;${getSerieStr(m.serie||0)}</strong></td><td>${m.fecha}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td style="font-size:.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis">${matText}</td></tr>`
-}).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones para los filtros seleccionados</td></tr>';
+return`<tr><td><strong>N&ordm;${getSerieStr(m.serie||0)}</strong></td><td>${m.fecha}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td>${m.subcontrata||'-'}</td><td style="font-size:.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis">${matText}</td></tr>`
+}).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones para los filtros seleccionados</td></tr>';
 const agg=aggregateMaterials(list);
 document.getElementById('rpt-material-totals').innerHTML=agg.length?agg.map(a=>{
 const mat=materials.find(x=>x.id===a.materialId);const imgSrc=mat?getMaterialImg(mat):'';
@@ -1330,6 +1333,7 @@ document.getElementById('rpt-hasta').value='';
 document.getElementById('rpt-empresa').value='';
 document.getElementById('rpt-obra').value='';
 document.getElementById('rpt-zona').value='';
+document.getElementById('rpt-subcontrata').value='';
 renderReportPreview();
 }
 
@@ -1353,15 +1357,18 @@ const dDesde=document.getElementById('rpt-desde').value;
 const dHasta=document.getElementById('rpt-hasta').value;
 const empId=document.getElementById('rpt-empresa').value;
 const obraId=document.getElementById('rpt-obra').value;
+const subId=document.getElementById('rpt-subcontrata').value;
 const emp=empId?empresas.find(e=>e.id===empId):null;
 const ob=obraId?obras.find(o=>o.id===obraId):null;
+const sub=subId?subcontratas.find(s=>s.id===subId):null;
 title='Reporte Mediciones';
 if(dDesde||dHasta)title+=' - '+ (dDesde||'inicio')+' al '+(dHasta||'fin');
 if(emp)title+=' | '+emp.nombre;
 if(ob)title+=' | '+ob.nombre;
+if(sub)title+=' | '+sub.nombre;
 title+=' ('+list.length+' meds)';
-hdr=['N Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
-data=list.flatMap(m=>expandMed(m)).map(l=>[l.serie,l.fecha,l.empresa,l.obra,l.material,l.categoria,l.cantidad,l.unidad]);
+hdr=['N Serie','Fecha','Empresa','Obra','Subcontrata','Material','Categoria','Cantidad','Unidad'];
+data=list.flatMap(m=>expandMed(m)).map(l=>[l.serie,l.fecha,l.empresa,l.obra,l.subcontrata,l.material,l.categoria,l.cantidad,l.unidad]);
 }
 
 doc.setFontSize(16);doc.setTextColor(2,136,209);doc.text('Control de Medicion - Obra',14,15);
@@ -1391,19 +1398,22 @@ const dDesde=document.getElementById('rpt-desde').value;
 const dHasta=document.getElementById('rpt-hasta').value;
 const empId=document.getElementById('rpt-empresa').value;
 const obraId=document.getElementById('rpt-obra').value;
+const subId=document.getElementById('rpt-subcontrata').value;
 const emp=empId?empresas.find(e=>e.id===empId):null;
 const ob=obraId?obras.find(o=>o.id===obraId):null;
+const sub=subId?subcontratas.find(s=>s.id===subId):null;
 title='Reporte Mediciones';
 if(dDesde||dHasta)title+=' - '+ (dDesde||'inicio')+' al '+(dHasta||'fin');
 if(emp)title+=' | '+emp.nombre;
 if(ob)title+=' | '+ob.nombre;
-headers=['Serie','Fecha','Empresa','Obra','Material','Categoria','Cantidad','Unidad'];
-data=list.flatMap(m=>expandMed(m)).map(l=>({Serie:l.serie,Fecha:l.fecha,Empresa:l.empresa,Obra:l.obra,Material:l.material,Categoria:l.categoria,Cantidad:l.cantidad,Unidad:l.unidad}));
+if(sub)title+=' | '+sub.nombre;
+headers=['Serie','Fecha','Empresa','Obra','Subcontrata','Material','Categoria','Cantidad','Unidad'];
+data=list.flatMap(m=>expandMed(m)).map(l=>({Serie:l.serie,Fecha:l.fecha,Empresa:l.empresa,Obra:l.obra,Subcontrata:l.subcontrata,Material:l.material,Categoria:l.categoria,Cantidad:l.cantidad,Unidad:l.unidad}));
 }
 
 const wsData=[headers,...data.map(d=>Object.values(d))];
 const ws=XLSX.utils.aoa_to_sheet(wsData);
-ws['!cols']=[{wch:10},{wch:12},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
+ws['!cols']=[{wch:10},{wch:12},{wch:20},{wch:20},{wch:20},{wch:40},{wch:15},{wch:10},{wch:10}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
 XLSX.writeFile(wb,'medicion-'+type+'-'+new Date().toISOString().split('T')[0]+'.xlsx');
@@ -1483,6 +1493,12 @@ if(!sel)return;
 sel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${z.id}">${z.nombre}</option>`).join('');
 }
 
+function populateSubcontrataReportSelect(){
+const sel=document.getElementById('rpt-subcontrata');
+if(!sel)return;
+sel.innerHTML='<option value="">Todas las subcontratas</option>'+subcontratas.map(s=>`<option value="${s.id}">${s.nombre}</option>`).join('');
+}
+
 const _IMG={
 cable:'https://media.telematel.com/assets/0024000148-5359-md01_500.jpg',
 cablebundle:'https://media.telematel.com/assets/0024000153-7a2b-md01_500.jpg',
@@ -1541,6 +1557,7 @@ populateEmpresaFilterSelect();
 populateObraSelects();
 populateZonaReportSelect();
 populateZonaFilterSelect();
+populateSubcontrataReportSelect();
 document.getElementById('med-mat-search').addEventListener('input',searchMaterialForMedicion);
 document.getElementById('med-mat-search').addEventListener('focus',searchMaterialForMedicion);
 document.getElementById('med-obra').addEventListener('change',function(){
