@@ -12,7 +12,7 @@ import urllib.request
 DEFAULT_URL = ('https://medicion-obra-default-rtdb.europe-west1.'
                'firebasedatabase.app/appdata.json')
 DEFAULT_DB = '/var/lib/medicion-obra/medicion.db'
-COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras']
+COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas', 'subcontratas']
 
 SCHEMA = (
     'CREATE TABLE IF NOT EXISTS appdata ('

@@ -160,6 +160,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <button class="nav-btn" onclick="showPage('obras')"><span class="icon">&#127959;</span>Obras</button>
 <button class="nav-btn" onclick="showPage('zonas')"><span class="icon">&#128205;</span>Zonas</button>
 <button class="nav-btn" onclick="showPage('empresas')"><span class="icon">&#127970;</span>Empresas Instaladoras</button>
+<button class="nav-btn" onclick="showPage('subcontratas')"><span class="icon">&#128188;</span>Subcontratas</button>
 <button class="nav-btn" onclick="showPage('materiales')"><span class="icon">&#128230;</span>Materiales</button>
 <button class="nav-btn" onclick="showPage('mediciones')"><span class="icon">&#128221;</span>Mediciones</button>
 <button class="nav-btn" onclick="showPage('estadisticas')"><span class="icon">&#128200;</span>Estadisticas</button>
@@ -232,6 +233,23 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="table-wrap">
 <table><thead><tr><th>Nombre</th><th>Especialidad</th><th>Contacto</th><th>Telefono</th><th>Email</th><th>Acciones</th></tr></thead>
 <tbody id="empresas-list"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- SUBCONTRATAS -->
+<div id="page-subcontratas" class="page">
+<div class="page-header">
+<h1>&#128188; Subcontratas</h1>
+<button class="btn btn-primary" onclick="openSubcontrataModal()">+ Nueva Subcontrata</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px">
+<input type="text" id="sub-search" placeholder="Buscar subcontrata..." oninput="renderSubcontratas()" style="flex:1;min-width:200px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;font-size:.85rem;outline:none">
+</div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Nombre</th><th>Empresa</th><th>Contacto</th><th>Telefono</th><th>Email</th><th>Acciones</th></tr></thead>
+<tbody id="subcontratas-list"></tbody></table>
 </div>
 </div>
 </div>
@@ -368,6 +386,24 @@ tr:hover{background:rgba(79,195,247,0.05)}
 </div>
 </div>
 
+<!-- MODAL SUBCONTRATA -->
+<div class="modal-overlay" id="modal-subcontrata">
+<div class="modal">
+<h3 id="sub-modal-title">Nueva Subcontrata</h3>
+<input type="hidden" id="sub-edit-id">
+<div class="form-group"><label>Nombre de la Subcontrata *</label><input type="text" id="sub-nombre" placeholder="Nombre de la subcontrata"></div>
+<div class="form-group"><label>Empresa *</label><select id="sub-empresa"></select></div>
+<div class="form-group"><label>Contacto</label><input type="text" id="sub-contacto" placeholder="Nombre del contacto"></div>
+<div class="form-group"><label>Telefono</label><input type="text" id="sub-telefono" placeholder="600 000 000"></div>
+<div class="form-group"><label>Email</label><input type="email" id="sub-email" placeholder="email@ejemplo.com"></div>
+<div class="form-group"><label>Notas</label><input type="text" id="sub-notas" placeholder="Observaciones"></div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-subcontrata')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveSubcontrata()">Guardar</button>
+</div>
+</div>
+</div>
+
 <!-- MODAL OBRA -->
 <div class="modal-overlay" id="modal-obra">
 <div class="modal">
@@ -450,6 +486,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="form-group"><label>Empresa Instaladora *</label><select id="med-empresa"></select></div>
 <div class="form-group"><label>Obra</label><select id="med-obra"></select></div>
 <div class="form-group"><label>Zona</label><select id="med-zona" onchange=""><option value="">Sin zona</option></select></div>
+<div class="form-group"><label>Subcontrata</label><select id="med-subcontrata"><option value="">Sin subcontrata</option></select></div>
 <div style="background:#E1F5FE;border-radius:8px;padding:12px;margin-bottom:10px">
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
 <div style="flex:1;min-width:200px" class="search-picker">
@@ -485,6 +522,7 @@ let matFilter = 'all';
 let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
 let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let zonas = JSON.parse(localStorage.getItem('zonas_data') || '[]');
+let subcontratas = JSON.parse(localStorage.getItem('sub_data') || '[]');
 let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
@@ -515,12 +553,13 @@ function saveLocal(){
   localStorage.setItem('emp_data',JSON.stringify(empresas));
   localStorage.setItem('obras_data',JSON.stringify(obras));
   localStorage.setItem('zonas_data',JSON.stringify(zonas));
+  localStorage.setItem('sub_data',JSON.stringify(subcontratas));
   localStorage.setItem('med_serie_counter',medSerieCounter);
 }
 
 function save(){
   saveLocal();
-  const payload={materials,mediciones,empresas,obras,zonas};
+  const payload={materials,mediciones,empresas,obras,zonas,subcontratas};
   if(_dbRef){
     _dbRef.set(payload).catch(e=>console.warn('Firebase save error',e));
   }
@@ -545,6 +584,7 @@ function initSync(){
         if(r.empresas)empresas=r.empresas;
         if(r.obras)obras=r.obras;
         if(r.zonas)zonas=r.zonas;
+        if(r.subcontratas)subcontratas=r.subcontratas;
         saveLocal();
         if(!_ready){toast('Datos sincronizados desde la nube');_ready=true;}
         renderAll();
@@ -574,6 +614,7 @@ function renderAll(){
     if(id==='dashboard')renderDashboard();
     if(id==='obras')renderObras();
     if(id==='empresas')renderEmpresas();
+    if(id==='subcontratas')renderSubcontratas();
     if(id==='materiales')renderMaterials();
     if(id==='mediciones')renderMediciones();
     if(id==='zonas')renderZonas();
@@ -588,7 +629,7 @@ function showPage(id){
 document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
 document.getElementById('page-'+id).classList.add('active');
 document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-const pages=['dashboard','obras','zonas','empresas','materiales','mediciones','estadisticas','reportes'];
+const pages=['dashboard','obras','zonas','empresas','subcontratas','materiales','mediciones','estadisticas','reportes'];
 const idx=pages.indexOf(id);
 if(idx>=0)document.querySelectorAll('.nav-btn')[idx].classList.add('active');
 document.querySelector('.sidebar').classList.remove('open');
@@ -596,6 +637,7 @@ if(id==='dashboard')renderDashboard();
 if(id==='obras')renderObras();
 if(id==='zonas')renderZonas();
 if(id==='empresas')renderEmpresas();
+if(id==='subcontratas')renderSubcontratas();
 if(id==='materiales')renderMaterials();
 if(id==='mediciones')renderMediciones();
 if(id==='reportes')renderReportPreview();
@@ -657,8 +699,25 @@ document.getElementById('empresas-list').innerHTML=list.length?list.map(e=>`<tr>
 <td><strong>${e.nombre}</strong></td>
 <td><span class="tag tag-${e.especialidad==='Electricidad'?'elec':e.especialidad==='PCI'?'pci':e.especialidad==='Fontaneria'?'font':e.especialidad==='Climatizacion'?'clim':'cal'}">${e.especialidad}</span></td>
 <td>${e.contacto||'-'}</td><td>${e.telefono||'-'}</td><td>${e.email||'-'}</td>
-<td><button class="btn btn-warning" onclick="editEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+<td><button class="btn btn-outline" onclick="showEmpresaTrabajos('${e.id}')" style="padding:5px 10px;font-size:.75rem">Trabajos</button> <button class="btn btn-warning" onclick="editEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteEmpresa('${e.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
 </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay empresas registradas</td></tr>';
+}
+
+function showEmpresaTrabajos(empresaId){
+const emp=empresas.find(e=>e.id===empresaId);
+if(!emp)return;
+const meds=mediciones.filter(m=>m.empresaId===empresaId);
+document.getElementById('obra-trabajos-title').textContent='Trabajos: '+emp.nombre;
+const body=document.getElementById('obra-trabajos-body');
+if(!meds.length){
+body.innerHTML='<p style="text-align:center;padding:20px;color:var(--text-light)">No hay mediciones registradas para esta empresa</p>';
+}else{
+body.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Fecha</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obra</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Zona</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Materiales</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obs.</th></tr></thead><tbody>'+meds.map(m=>{
+const lineasHtml=(m.lineas||[]).map(l=>`<div>${l.material} (${l.categoria}) - ${l.cantidad} ${l.unidad}</div>`).join('');
+return `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.fecha||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obra||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.zona||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${lineasHtml||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obs||'-'}</td></tr>`;
+}).join('')+'</tbody></table>';
+}
+openModal('modal-obra-trabajos');
 }
 
 function openObraModal(){
@@ -799,6 +858,77 @@ const filtered=obraId?zonas.filter(z=>z.obraId===obraId):zonas;
 sel.innerHTML='<option value="">Sin zona</option>'+filtered.map(z=>`<option value="${z.id}">${z.nombre}</option>`).join('');
 }
 
+function openSubcontrataModal(){
+document.getElementById('sub-edit-id').value='';
+document.getElementById('sub-modal-title').textContent='Nueva Subcontrata';
+document.getElementById('sub-nombre').value='';
+document.getElementById('sub-contacto').value='';
+document.getElementById('sub-telefono').value='';
+document.getElementById('sub-email').value='';
+document.getElementById('sub-notas').value='';
+populateEmpresaSelect('sub-empresa');
+openModal('modal-subcontrata');
+}
+
+function editSubcontrata(id){
+const s=subcontratas.find(x=>x.id===id);
+document.getElementById('sub-edit-id').value=id;
+document.getElementById('sub-modal-title').textContent='Editar Subcontrata';
+document.getElementById('sub-nombre').value=s.nombre;
+document.getElementById('sub-contacto').value=s.contacto||'';
+document.getElementById('sub-telefono').value=s.telefono||'';
+document.getElementById('sub-email').value=s.email||'';
+document.getElementById('sub-notas').value=s.notas||'';
+populateEmpresaSelect('sub-empresa');
+document.getElementById('sub-empresa').value=s.empresaId||'';
+openModal('modal-subcontrata');
+}
+
+function saveSubcontrata(){
+const nombre=document.getElementById('sub-nombre').value.trim();
+if(!nombre){alert('Introduce un nombre de subcontrata');return}
+const empresaId=document.getElementById('sub-empresa').value;
+const emp=empresas.find(e=>e.id===empresaId);
+const data={nombre,empresaId,empresa:emp?emp.nombre:'',contacto:document.getElementById('sub-contacto').value.trim(),telefono:document.getElementById('sub-telefono').value.trim(),email:document.getElementById('sub-email').value.trim(),notas:document.getElementById('sub-notas').value.trim()};
+const editId=document.getElementById('sub-edit-id').value;
+if(editId){const idx=subcontratas.findIndex(x=>x.id===editId);subcontratas[idx]={...subcontratas[idx],...data}}
+else{data.id='sc_'+Date.now();data.fechaCreacion=new Date().toISOString().split('T')[0];subcontratas.push(data)}
+save();closeModal('modal-subcontrata');renderSubcontratas();toast('Subcontrata guardada');
+}
+
+function deleteSubcontrata(id){
+if(!confirm('Eliminar esta subcontrata?'))return;
+subcontratas=subcontratas.filter(x=>x.id!==id);
+save();renderSubcontratas();toast('Subcontrata eliminada');
+}
+
+function renderSubcontratas(){
+const q=(document.getElementById('sub-search')?.value||'').toLowerCase();
+const list=subcontratas.filter(s=>!q||s.nombre.toLowerCase().includes(q)||(s.empresa||'').toLowerCase().includes(q)||(s.contacto||'').toLowerCase().includes(q));
+document.getElementById('subcontratas-list').innerHTML=list.length?list.map(s=>`<tr>
+<td><strong>${s.nombre}</strong></td>
+<td>${s.empresa||'-'}</td><td>${s.contacto||'-'}</td><td>${s.telefono||'-'}</td><td>${s.email||'-'}</td>
+<td><button class="btn btn-outline" onclick="showSubcontrataTrabajos('${s.id}')" style="padding:5px 10px;font-size:.75rem">Trabajos</button> <button class="btn btn-warning" onclick="editSubcontrata('${s.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteSubcontrata('${s.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay subcontratas registradas</td></tr>';
+}
+
+function showSubcontrataTrabajos(subId){
+const sub=subcontratas.find(s=>s.id===subId);
+if(!sub)return;
+const meds=mediciones.filter(m=>m.subcontrataId===subId);
+document.getElementById('obra-trabajos-title').textContent='Trabajos: '+sub.nombre;
+const body=document.getElementById('obra-trabajos-body');
+if(!meds.length){
+body.innerHTML='<p style="text-align:center;padding:20px;color:var(--text-light)">No hay mediciones registradas para esta subcontrata</p>';
+}else{
+body.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Fecha</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Empresa</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obra</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Zona</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Materiales</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obs.</th></tr></thead><tbody>'+meds.map(m=>{
+const lineasHtml=(m.lineas||[]).map(l=>`<div>${l.material} (${l.categoria}) - ${l.cantidad} ${l.unidad}</div>`).join('');
+return `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.fecha||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.empresa||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obra||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.zona||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${lineasHtml||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obs||'-'}</td></tr>`;
+}).join('')+'</tbody></table>';
+}
+openModal('modal-obra-trabajos');
+}
+
 function openMaterialModal(id){
 document.getElementById('mat-edit-id').value='';
 document.getElementById('mat-modal-title').textContent='Nuevo Material';
@@ -916,6 +1046,7 @@ tempMedicionLineas=[];
 populateEmpresaSelect('med-empresa');
 populateObraSelect('med-obra');
 populateZonaSelect('med-zona');
+populateSubcontrataSelect('med-subcontrata');
 filterMaterialsForMedicion();
 renderTempMedLineas();
 openModal('modal-medicion');
@@ -924,6 +1055,11 @@ openModal('modal-medicion');
 function populateEmpresaSelect(selectId){
 const sel=document.getElementById(selectId);
 sel.innerHTML=empresas.length?empresas.map(e=>`<option value="${e.id}">${e.nombre} (${e.especialidad})</option>`).join(''):'<option value="">No hay empresas - Crear empresa primero</option>';
+}
+
+function populateSubcontrataSelect(selectId){
+const sel=document.getElementById(selectId);
+sel.innerHTML='<option value="">Sin subcontrata</option>'+subcontratas.map(s=>`<option value="${s.id}">${s.nombre}</option>`).join('');
 }
 
 function filterMaterialsForMedicion(){
@@ -986,6 +1122,8 @@ populateObraSelect('med-obra');
 document.getElementById('med-obra').value=m.obraId||'';
 populateZonaSelect('med-zona',m.obraId);
 document.getElementById('med-zona').value=m.zonaId||'';
+populateSubcontrataSelect('med-subcontrata');
+document.getElementById('med-subcontrata').value=m.subcontrataId||'';
 document.getElementById('med-cat').value='Electricidad';
 filterMaterialsForMedicion();
 const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
@@ -1000,20 +1138,22 @@ const fecha=document.getElementById('med-fecha').value;
 const empresaId=document.getElementById('med-empresa').value;
 const obraId=document.getElementById('med-obra').value;
 const zonaId=document.getElementById('med-zona').value;
+const subcontrataId=document.getElementById('med-subcontrata').value;
 if(!fecha){alert('Selecciona una fecha');return}
 if(!tempMedicionLineas.length){alert('Agrega al menos un material');return}
 const emp=empresas.find(e=>e.id===empresaId);
 const ob=obras.find(o=>o.id===obraId);
 const zn=zonas.find(z=>z.id===zonaId);
+const sub=subcontratas.find(s=>s.id===subcontrataId);
 const editId=document.getElementById('med-edit-id').value;
 const obs=document.getElementById('med-obs').value.trim();
 const lineas=tempMedicionLineas.map(l=>({materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad}));
 if(editId){
 const idx=mediciones.findIndex(x=>x.id===editId);
-mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',lineas,obs};
+mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',subcontrataId,subcontrata:sub?sub.nombre:'',lineas,obs};
 }else{
 const serie=nextSerie();
-mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,serie,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',lineas,obs});
+mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,serie,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',subcontrataId,subcontrata:sub?sub.nombre:'',lineas,obs});
 }
 tempMedicionLineas=[];
 save();closeModal('modal-medicion');renderMediciones();toast('Medicion guardada');
