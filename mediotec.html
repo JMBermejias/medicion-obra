@@ -18,8 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -157,6 +156,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <h2>&#128295; Control de Obra<span>Sistema de Medicion</span></h2>
 <button class="nav-btn active" onclick="showPage('dashboard')"><span class="icon">&#128202;</span>Panel Principal</button>
 <button class="nav-btn" onclick="showPage('obras')"><span class="icon">&#127959;</span>Obras</button>
+<button class="nav-btn" onclick="showPage('zonas')"><span class="icon">&#128205;</span>Zonas</button>
 <button class="nav-btn" onclick="showPage('empresas')"><span class="icon">&#127970;</span>Empresas Instaladoras</button>
 <button class="nav-btn" onclick="showPage('materiales')"><span class="icon">&#128230;</span>Materiales</button>
 <button class="nav-btn" onclick="showPage('mediciones')"><span class="icon">&#128221;</span>Mediciones</button>
@@ -196,6 +196,23 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="table-wrap">
 <table><thead><tr><th>Nombre</th><th>Direccion</th><th>Cliente</th><th>Estado</th><th>Acciones</th></tr></thead>
 <tbody id="obras-list"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- ZONAS -->
+<div id="page-zonas" class="page">
+<div class="page-header">
+<h1>&#128205; Zonas</h1>
+<button class="btn btn-primary" onclick="openZonaModal()">+ Nueva Zona</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px">
+<input type="text" id="zona-search" placeholder="Buscar zona..." oninput="renderZonas()" style="flex:1;min-width:200px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;font-size:.85rem;outline:none">
+</div>
+<div class="card">
+<div class="table-wrap">
+<table><thead><tr><th>Nombre</th><th>Obra</th><th>Descripcion</th><th>Acciones</th></tr></thead>
+<tbody id="zonas-list"></tbody></table>
 </div>
 </div>
 </div>
@@ -251,12 +268,13 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <input type="date" id="filter-hasta" onchange="renderMediciones()">
 <select id="filter-empresa-med" onchange="renderMediciones()"><option value="">Todas las empresas</option></select>
 <select id="filter-obra-med" onchange="renderMediciones()"><option value="">Todas las obras</option></select>
+<select id="filter-zona-med" onchange="renderMediciones()"><option value="">Todas las zonas</option></select>
 <select id="filter-cat-med" onchange="renderMediciones()"><option value="">Todas las categorias</option><option value="Electricidad">Electricidad</option><option value="Fontaneria">Fontaneria</option><option value="Calefaccion">Calefaccion</option><option value="Climatizacion">Climatizacion</option><option value="PCI">PCI Contra Incendios</option></select>
 <button class="btn btn-outline" onclick="clearMedFilters()" style="padding:6px 12px;font-size:.8rem">Limpiar</button>
 </div>
 <div class="card">
 <div class="table-wrap">
-<table><thead><tr><th>N&ordm;/Fecha</th><th>Empresa</th><th>Obra</th><th>Materiales</th><th>Categorias</th><th>Acciones</th></tr></thead>
+<table><thead><tr><th>N&ordm;/Fecha</th><th>Empresa</th><th>Obra</th><th>Zona</th><th>Materiales</th><th>Categorias</th><th>Acciones</th></tr></thead>
 <tbody id="mediciones-list"></tbody></table>
 </div>
 </div>
@@ -298,6 +316,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <input type="date" id="rpt-hasta" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px">
 <select id="rpt-empresa" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las empresas</option></select>
 <select id="rpt-obra" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las obras</option></select>
+<select id="rpt-zona" onchange="renderReportPreview()" style="padding:8px;border:2px solid var(--border);border-radius:8px"><option value="">Todas las zonas</option></select>
 <button class="btn btn-outline" onclick="clearRptFilters()" style="padding:6px 12px;font-size:.8rem">Limpiar</button>
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
@@ -364,6 +383,21 @@ tr:hover{background:rgba(79,195,247,0.05)}
 </div>
 </div>
 
+<!-- MODAL ZONA -->
+<div class="modal-overlay" id="modal-zona">
+<div class="modal">
+<h3 id="zona-modal-title">Nueva Zona</h3>
+<input type="hidden" id="zona-edit-id">
+<div class="form-group"><label>Nombre de la Zona *</label><input type="text" id="zona-nombre" placeholder="Ej: Zona A, Planta 1"></div>
+<div class="form-group"><label>Obra *</label><select id="zona-obra"></select></div>
+<div class="form-group"><label>Descripcion</label><input type="text" id="zona-descripcion" placeholder="Descripcion breve de la zona"></div>
+<div class="modal-actions">
+<button class="btn btn-outline" onclick="closeModal('modal-zona')">Cancelar</button>
+<button class="btn btn-primary" onclick="saveZona()">Guardar</button>
+</div>
+</div>
+</div>
+
 <!-- MODAL MATERIAL -->
 <div class="modal-overlay" id="modal-material">
 <div class="modal">
@@ -402,6 +436,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="form-group"><label>Fecha</label><input type="date" id="med-fecha"></div>
 <div class="form-group"><label>Empresa Instaladora *</label><select id="med-empresa"></select></div>
 <div class="form-group"><label>Obra</label><select id="med-obra"></select></div>
+<div class="form-group"><label>Zona</label><select id="med-zona" onchange=""><option value="">Sin zona</option></select></div>
 <div style="background:#E1F5FE;border-radius:8px;padding:12px;margin-bottom:10px">
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
 <div style="flex:1;min-width:200px" class="search-picker">
@@ -436,13 +471,12 @@ let mediciones = JSON.parse(localStorage.getItem('med_data') || '[]');
 let matFilter = 'all';
 let empresas = JSON.parse(localStorage.getItem('emp_data') || '[]');
 let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
+let zonas = JSON.parse(localStorage.getItem('zonas_data') || '[]');
 let tempMedicionLineas = [];
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
-let _db=null;let _dbRef=null;let _fbConnected=false;let _fbLastUpdate=0;
-const APP_VERSION='23';if(localStorage.getItem('app_version')!==APP_VERSION){localStorage.setItem('app_version',APP_VERSION);if('caches' in window){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())}}
-
-const FB_CONFIG={apiKey:"AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y",authDomain:"medicion-obra.firebaseapp.com",databaseURL:"https://medicion-obra-default-rtdb.europe-west1.firebasedatabase.app",projectId:"medicion-obra",storageBucket:"medicion-obra.firebasestorage.app",messagingSenderId:"996090302101",appId:"1:996090302101:web:3d0385e1f2911b3ce1559c"};
+let _fbConnected=false;
+const APP_VERSION='28';if(localStorage.getItem('app_version')!==APP_VERSION){localStorage.setItem('app_version',APP_VERSION);if('caches' in window){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())}}
 
 function nextSerie(){medSerieCounter++;localStorage.setItem('med_serie_counter',medSerieCounter);return medSerieCounter}
 function getSerieStr(n){return String(n).padStart(5,'0')}
@@ -465,54 +499,51 @@ function saveLocal(){
   localStorage.setItem('med_data',JSON.stringify(mediciones));
   localStorage.setItem('emp_data',JSON.stringify(empresas));
   localStorage.setItem('obras_data',JSON.stringify(obras));
+  localStorage.setItem('zonas_data',JSON.stringify(zonas));
   localStorage.setItem('med_serie_counter',medSerieCounter);
 }
 
 function save(){
   saveLocal();
-  if(_dbRef&&!_syncing){
-    _dbRef.set({materials,mediciones,empresas,obras}).catch(e=>console.warn('Firebase sync error',e));
-  }
+  fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({materials,mediciones,empresas,obras,zonas})}).catch(e=>console.warn('Sync error',e));
 }
 
-function initFirebase(){
-  if(!FB_CONFIG.apiKey||!FB_CONFIG.databaseURL)return;
-  try{
-    firebase.initializeApp(FB_CONFIG);
-    _db=firebase.database();
-    _dbRef=_db.ref('appdata');
-    _db.ref('.info/connected').on('value',snap=>{
-      _fbConnected=snap.val()===true;
-      updateSyncStatus();
-    });
-    _dbRef.on('value',snap=>{
-      const r=snap.val();
-      if(r){
-        _syncing=true;
-        if(r.materials)materials=r.materials;
-        if(r.mediciones)mediciones=r.mediciones;
-        if(r.empresas)empresas=r.empresas;
-        if(r.obras)obras=r.obras;
-        localStorage.setItem('mat_data',JSON.stringify(materials));
-        localStorage.setItem('med_data',JSON.stringify(mediciones));
-        localStorage.setItem('emp_data',JSON.stringify(empresas));
-        localStorage.setItem('obras_data',JSON.stringify(obras));
-        _syncing=false;
-        if(!_ready)_ready=true;
-        renderAll();
-        if(_fbLastUpdate&&Date.now()-_fbLastUpdate>2000){toast('Datos sincronizados')}
-        _fbLastUpdate=Date.now();
-      }
-    });
+function initSync(){
+  _fbConnected=true;
+  updateSyncStatus();
+  fetch('/api/data').then(r=>r.json()).then(data=>{
+    if(data.materials)materials=data.materials;
+    if(data.mediciones)mediciones=data.mediciones;
+    if(data.empresas)empresas=data.empresas;
+    if(data.obras)obras=data.obras;
+    if(data.zonas)zonas=data.zonas;
+    saveLocal();
+    renderAll();
     _ready=true;
-  }catch(e){console.warn('Firebase error',e)}
+    toast('Datos sincronizados');
+  }).catch(e=>{
+    _fbConnected=false;
+    updateSyncStatus();
+    console.warn('API sync error',e);
+  });
+  setInterval(function(){
+    fetch('/api/data').then(r=>r.json()).then(data=>{
+      if(data.materials)materials=data.materials;
+      if(data.mediciones)mediciones=data.mediciones;
+      if(data.empresas)empresas=data.empresas;
+      if(data.obras)obras=data.obras;
+      if(data.zonas)zonas=data.zonas;
+      saveLocal();
+      renderAll();
+    }).catch(()=>{});
+  },10000);
 }
 
 function updateSyncStatus(){
   const el=document.getElementById('sync-status');
   if(!el)return;
-  if(_fbConnected){el.textContent='v'+APP_VERSION+' | Sincronizado';el.className='sync-ok'}
-  else{el.textContent='v'+APP_VERSION+' | Sin conexion';el.className='sync-off'}
+  if(_fbConnected){el.textContent='v28 | Sincronizado';el.className='sync-ok'}
+  else{el.textContent='v28 | Sin conexion';el.className='sync-off'}
 }
 
 function renderAll(){
@@ -523,9 +554,10 @@ function renderAll(){
     if(id==='empresas')renderEmpresas();
     if(id==='materiales')renderMaterials();
     if(id==='mediciones')renderMediciones();
+    if(id==='zonas')renderZonas();
     if(id==='reportes')renderReportPreview();
     if(id==='estadisticas')renderEstadisticas();}
-  populateEmpresaReportSelect();populateEmpresaFilterSelect();populateObraSelects();
+  populateEmpresaReportSelect();populateEmpresaFilterSelect();populateObraSelects();populateZonaReportSelect();populateZonaFilterSelect();
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -534,12 +566,13 @@ function showPage(id){
 document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
 document.getElementById('page-'+id).classList.add('active');
 document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-const pages=['dashboard','obras','empresas','materiales','mediciones','estadisticas','reportes'];
+const pages=['dashboard','obras','zonas','empresas','materiales','mediciones','estadisticas','reportes'];
 const idx=pages.indexOf(id);
 if(idx>=0)document.querySelectorAll('.nav-btn')[idx].classList.add('active');
 document.querySelector('.sidebar').classList.remove('open');
 if(id==='dashboard')renderDashboard();
 if(id==='obras')renderObras();
+if(id==='zonas')renderZonas();
 if(id==='empresas')renderEmpresas();
 if(id==='materiales')renderMaterials();
 if(id==='mediciones')renderMediciones();
@@ -654,6 +687,60 @@ document.getElementById('obras-list').innerHTML=list.length?list.map(o=>`<tr>
 <td><span class="tag tag-${o.estado==='Activa'?'elec':o.estado==='Pausada'?'cal':'font'}">${o.estado}</span></td>
 <td><button class="btn btn-warning" onclick="editObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteObra('${o.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
 </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">No hay obras registradas</td></tr>';
+}
+
+function openZonaModal(){
+document.getElementById('zona-edit-id').value='';
+document.getElementById('zona-modal-title').textContent='Nueva Zona';
+document.getElementById('zona-nombre').value='';
+document.getElementById('zona-descripcion').value='';
+populateObraSelect('zona-obra');
+openModal('modal-zona');
+}
+
+function editZona(id){
+const z=zonas.find(x=>x.id===id);
+document.getElementById('zona-edit-id').value=id;
+document.getElementById('zona-modal-title').textContent='Editar Zona';
+document.getElementById('zona-nombre').value=z.nombre;
+document.getElementById('zona-descripcion').value=z.descripcion||'';
+populateObraSelect('zona-obra');
+document.getElementById('zona-obra').value=z.obraId||'';
+openModal('modal-zona');
+}
+
+function saveZona(){
+const nombre=document.getElementById('zona-nombre').value.trim();
+if(!nombre){alert('Introduce un nombre de zona');return}
+const obraId=document.getElementById('zona-obra').value;
+const ob=obras.find(o=>o.id===obraId);
+const data={nombre,obraId,obra:ob?ob.nombre:'',descripcion:document.getElementById('zona-descripcion').value.trim()};
+const editId=document.getElementById('zona-edit-id').value;
+if(editId){const idx=zonas.findIndex(x=>x.id===editId);zonas[idx]={...zonas[idx],...data}}
+else{data.id='z_'+Date.now();data.fechaCreacion=new Date().toISOString().split('T')[0];zonas.push(data)}
+save();closeModal('modal-zona');renderZonas();toast('Zona guardada');
+}
+
+function deleteZona(id){
+if(!confirm('Eliminar esta zona?'))return;
+zonas=zonas.filter(x=>x.id!==id);
+save();renderZonas();toast('Zona eliminada');
+}
+
+function renderZonas(){
+const q=(document.getElementById('zona-search')?.value||'').toLowerCase();
+const list=zonas.filter(z=>!q||z.nombre.toLowerCase().includes(q)||(z.obra||'').toLowerCase().includes(q)||(z.descripcion||'').toLowerCase().includes(q));
+document.getElementById('zonas-list').innerHTML=list.length?list.map(z=>`<tr>
+<td><strong>${z.nombre}</strong></td>
+<td>${z.obra||'-'}</td><td>${z.descripcion||'-'}</td>
+<td><button class="btn btn-warning" onclick="editZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`).join(''):'<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-light)">No hay zonas registradas</td></tr>';
+}
+
+function populateZonaSelect(selectId,obraId){
+const sel=document.getElementById(selectId);
+const filtered=obraId?zonas.filter(z=>z.obraId===obraId):zonas;
+sel.innerHTML='<option value="">Sin zona</option>'+filtered.map(z=>`<option value="${z.id}">${z.nombre}</option>`).join('');
 }
 
 function openMaterialModal(id){
@@ -772,6 +859,7 @@ document.getElementById('med-mat-search').value='';
 tempMedicionLineas=[];
 populateEmpresaSelect('med-empresa');
 populateObraSelect('med-obra');
+populateZonaSelect('med-zona');
 filterMaterialsForMedicion();
 renderTempMedLineas();
 openModal('modal-medicion');
@@ -840,6 +928,8 @@ populateEmpresaSelect('med-empresa');
 document.getElementById('med-empresa').value=m.empresaId||'';
 populateObraSelect('med-obra');
 document.getElementById('med-obra').value=m.obraId||'';
+populateZonaSelect('med-zona',m.obraId);
+document.getElementById('med-zona').value=m.zonaId||'';
 document.getElementById('med-cat').value='Electricidad';
 filterMaterialsForMedicion();
 const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
@@ -853,19 +943,21 @@ function saveMedicion(){
 const fecha=document.getElementById('med-fecha').value;
 const empresaId=document.getElementById('med-empresa').value;
 const obraId=document.getElementById('med-obra').value;
+const zonaId=document.getElementById('med-zona').value;
 if(!fecha){alert('Selecciona una fecha');return}
 if(!tempMedicionLineas.length){alert('Agrega al menos un material');return}
 const emp=empresas.find(e=>e.id===empresaId);
 const ob=obras.find(o=>o.id===obraId);
+const zn=zonas.find(z=>z.id===zonaId);
 const editId=document.getElementById('med-edit-id').value;
 const obs=document.getElementById('med-obs').value.trim();
 const lineas=tempMedicionLineas.map(l=>({materialId:l.materialId,material:l.material,categoria:l.categoria,unidad:l.unidad,cantidad:l.cantidad}));
 if(editId){
 const idx=mediciones.findIndex(x=>x.id===editId);
-mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',lineas,obs};
+mediciones[idx]={...mediciones[idx],fecha,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',lineas,obs};
 }else{
 const serie=nextSerie();
-mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,serie,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',lineas,obs});
+mediciones.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),fecha,serie,empresaId,empresa:emp?emp.nombre:'Sin empresa',obraId,obra:ob?ob.nombre:'',zonaId,zona:zn?zn.nombre:'',lineas,obs});
 }
 tempMedicionLineas=[];
 save();closeModal('modal-medicion');renderMediciones();toast('Medicion guardada');
@@ -882,12 +974,14 @@ const fDesde=document.getElementById('filter-desde').value;
 const fHasta=document.getElementById('filter-hasta').value;
 const fe=document.getElementById('filter-empresa-med').value;
 const fo=document.getElementById('filter-obra-med').value;
+const fz=document.getElementById('filter-zona-med').value;
 const fc=document.getElementById('filter-cat-med').value;
 let list=[...mediciones];
 if(fDesde)list=list.filter(m=>m.fecha>=fDesde);
 if(fHasta)list=list.filter(m=>m.fecha<=fHasta);
 if(fe)list=list.filter(m=>m.empresaId===fe);
 if(fo)list=list.filter(m=>m.obraId===fo);
+if(fz)list=list.filter(m=>m.zonaId===fz);
 if(fc)list=list.filter(m=>(m.lineas||[]).some(l=>l.categoria===fc)||(m.categoria===fc));
 list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 document.getElementById('mediciones-list').innerHTML=
@@ -897,10 +991,10 @@ const matNames=lines.map(l=>'<span style="font-size:.8rem">'+l.material+' <stron
 const cats=[...new Set(lines.map(l=>l.categoria))];
 const tags=cats.map(c=>'<span class="tag tag-'+(c==='Electricidad'?'elec':c==='PCI'?'pci':c==='Fontaneria'?'font':c==='Climatizacion'?'clim':'cal')+'" style="margin:1px">'+c+'</span>').join(' ');
 return`<tr>
-<td><span style="font-weight:700;color:var(--primary-dark)">N&ordm;${getSerieStr(m.serie||0)}</span><br><small style="color:var(--text-light)">${m.fecha}</small></td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td>${matNames}</td>
+<td><span style="font-weight:700;color:var(--primary-dark)">N&ordm;${getSerieStr(m.serie||0)}</span><br><small style="color:var(--text-light)">${m.fecha}</small></td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td>${m.zona||'-'}</td><td>${matNames}</td>
 <td>${tags}</td>
 <td><button class="btn btn-warning" onclick="editMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">E</button> <button class="btn btn-danger" onclick="deleteMedicion('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
-</tr>`}).join(''):'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
+</tr>`}).join(''):'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>');
 }
 
 function renderDashboard(){
@@ -915,6 +1009,7 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card pci"><div class="stat-icon">&#128293;</div><div class="stat-value">${materials.filter(m=>m.categoria==='PCI').length}</div><div class="stat-label">Materiales PCI</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
+<div class="stat-card" style="background:linear-gradient(135deg,#FF7043,#FFAB91)"><div class="stat-icon">&#128205;</div><div class="stat-value">${zonas.length}</div><div class="stat-label">Zonas</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>`;
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
 document.getElementById('recent-list').innerHTML=recent.map(m=>{
@@ -984,11 +1079,13 @@ const dDesde=document.getElementById('rpt-desde').value;
 const dHasta=document.getElementById('rpt-hasta').value;
 const empId=document.getElementById('rpt-empresa').value;
 const obraId=document.getElementById('rpt-obra').value;
+const zonaId=document.getElementById('rpt-zona').value;
 let list=[...mediciones];
 if(dDesde)list=list.filter(m=>m.fecha>=dDesde);
 if(dHasta)list=list.filter(m=>m.fecha<=dHasta);
 if(empId)list=list.filter(m=>m.empresaId===empId);
 if(obraId)list=list.filter(m=>m.obraId===obraId);
+if(zonaId)list=list.filter(m=>m.zonaId===zonaId);
 list.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 return list;
 }
@@ -1026,6 +1123,7 @@ document.getElementById('filter-desde').value='';
 document.getElementById('filter-hasta').value='';
 document.getElementById('filter-empresa-med').value='';
 document.getElementById('filter-obra-med').value='';
+document.getElementById('filter-zona-med').value='';
 document.getElementById('filter-cat-med').value='';
 renderMediciones();
 }
@@ -1035,6 +1133,7 @@ document.getElementById('rpt-desde').value='';
 document.getElementById('rpt-hasta').value='';
 document.getElementById('rpt-empresa').value='';
 document.getElementById('rpt-obra').value='';
+document.getElementById('rpt-zona').value='';
 renderReportPreview();
 }
 
@@ -1130,7 +1229,6 @@ XLSX.writeFile(wb,'mediciones-'+new Date().toISOString().split('T')[0]+'.xlsx');
 toast('Excel exportado correctamente');
 }
 
-const APP_VERSION='20.0';
 const savedVersion=localStorage.getItem('app_version');
 if(savedVersion!==APP_VERSION){
   mediciones.forEach(m=>{
@@ -1175,6 +1273,18 @@ const sel=document.getElementById(id);
 if(!sel)return;
 sel.innerHTML='<option value="">Todas las obras</option>'+obras.map(o=>`<option value="${o.id}">${o.nombre}</option>`).join('');
 });
+}
+
+function populateZonaReportSelect(){
+const sel=document.getElementById('rpt-zona');
+if(!sel)return;
+sel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${z.id}">${z.nombre}</option>`).join('');
+}
+
+function populateZonaFilterSelect(){
+const sel=document.getElementById('filter-zona-med');
+if(!sel)return;
+sel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${z.id}">${z.nombre}</option>`).join('');
 }
 
 const _IMG={
@@ -1233,8 +1343,13 @@ save();
 populateEmpresaReportSelect();
 populateEmpresaFilterSelect();
 populateObraSelects();
+populateZonaReportSelect();
+populateZonaFilterSelect();
 document.getElementById('med-mat-search').addEventListener('input',searchMaterialForMedicion);
 document.getElementById('med-mat-search').addEventListener('focus',searchMaterialForMedicion);
+document.getElementById('med-obra').addEventListener('change',function(){
+  populateZonaSelect('med-zona',this.value);
+});
 document.addEventListener('click',function(e){
 document.querySelectorAll('.search-picker-results').forEach(r=>{
 if(!r.closest('.search-picker')||!r.closest('.search-picker').contains(e.target)){
@@ -1249,22 +1364,7 @@ if('serviceWorker' in navigator){
     if(e.data&&e.data.type==='SW_UPDATED'){location.reload()}
   });
 }
-initFirebase();
-setInterval(function(){
-  if(_dbRef){_dbRef.once('value').then(snap=>{
-    const r=snap.val();
-    if(r){
-      _syncing=true;
-      if(r.materials)materials=r.materials;
-      if(r.mediciones)mediciones=r.mediciones;
-      if(r.empresas)empresas=r.empresas;
-      if(r.obras)obras=r.obras;
-      saveLocal();
-      _syncing=false;
-      renderAll();
-    }
-  })}
-},30000);
+initSync();
 </script>
 <footer class="app-footer">
   <span id="sync-status" class="sync-off">Sin conexion</span>

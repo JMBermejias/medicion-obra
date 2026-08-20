@@ -14,7 +14,7 @@ WEB_DIR = os.environ.get('MEDICION_WEB', '/var/www/medicion-obra')
 DB_PATH = os.environ.get('MEDICION_DB', '/var/lib/medicion-obra/medicion.db')
 HOST = os.environ.get('MEDICION_HOST', '0.0.0.0')
 PORT = int(os.environ.get('MEDICION_PORT', '80'))
-COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras']
+COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas']
 
 SCHEMA = (
     'CREATE TABLE IF NOT EXISTS appdata ('
