@@ -772,8 +772,25 @@ const list=zonas.filter(z=>!q||z.nombre.toLowerCase().includes(q)||(z.obra||'').
 document.getElementById('zonas-list').innerHTML=list.length?list.map(z=>`<tr>
 <td><strong>${z.nombre}</strong></td>
 <td>${z.obra||'-'}</td><td>${z.descripcion||'-'}</td>
-<td><button class="btn btn-warning" onclick="editZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+<td><button class="btn btn-outline" onclick="showZonaTrabajos('${z.id}')" style="padding:5px 10px;font-size:.75rem">Trabajos</button> <button class="btn btn-warning" onclick="editZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">Editar</button> <button class="btn btn-danger" onclick="deleteZona('${z.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
 </tr>`).join(''):'<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-light)">No hay zonas registradas</td></tr>';
+}
+
+function showZonaTrabajos(zonaId){
+const zona=zonas.find(z=>z.id===zonaId);
+if(!zona)return;
+const meds=mediciones.filter(m=>m.zonaId===zonaId);
+document.getElementById('obra-trabajos-title').textContent='Trabajos: '+zona.nombre;
+const body=document.getElementById('obra-trabajos-body');
+if(!meds.length){
+body.innerHTML='<p style="text-align:center;padding:20px;color:var(--text-light)">No hay mediciones registradas para esta zona</p>';
+}else{
+body.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Fecha</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Empresa</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obra</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Materiales</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Obs.</th></tr></thead><tbody>'+meds.map(m=>{
+const lineasHtml=(m.lineas||[]).map(l=>`<div>${l.material} (${l.categoria}) - ${l.cantidad} ${l.unidad}</div>`).join('');
+return `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.fecha||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.empresa||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obra||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${lineasHtml||'-'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">${m.obs||'-'}</td></tr>`;
+}).join('')+'</tbody></table>';
+}
+openModal('modal-obra-trabajos');
 }
 
 function populateZonaSelect(selectId,obraId){
