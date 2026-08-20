@@ -62,7 +62,14 @@ def build():
         cmd += ['--add-data', d]
 
     if sys.platform == 'win32' and os.path.exists(ICON):
-        cmd += ['--icon', ICON]
+        ico_path = os.path.join(BUILD_DIR, 'icon.ico')
+        try:
+            from PIL import Image
+            img = Image.open(ICON)
+            img.save(ico_path, format='ICO', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
+            cmd += ['--icon', ico_path]
+        except ImportError:
+            print('  AVISO: Pillow no instalado, se omite icono. pip install Pillow')
 
     cmd.append(ENTRY)
 
