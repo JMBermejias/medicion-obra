@@ -239,20 +239,9 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
 <div class="page-header"><h1>&#128202; Panel Principal</h1></div>
-<div class="grid grid-5" id="stats-cards"></div>
 <div style="margin-top:20px">
 <h3 style="color:var(--primary-dark);margin-bottom:12px">&#128279; Accesos Rapidos</h3>
 <div class="grid grid-4" id="quick-cards"></div>
-</div>
-<div class="grid grid-2" style="margin-top:20px">
-<div class="card">
-<h3 style="color:var(--primary-dark);margin-bottom:15px">Mediciones Recientes</h3>
-<div class="table-wrap"><table><thead><tr><th>N&ordm;/Fecha</th><th>Materiales</th><th>Cant.</th><th>Empresa</th><th>Obra</th></tr></thead><tbody id="recent-list"></tbody></table></div>
-</div>
-<div class="card">
-<h3 style="color:var(--primary-dark);margin-bottom:15px">Materiales por Categoria</h3>
-<div id="cat-bars" style="padding:10px"></div>
-</div>
 </div>
 </div>
 
@@ -1541,16 +1530,6 @@ function renderDashboard(){
 const hoy=new Date().toISOString().split('T')[0];
 const mes=hoy.substring(0,7);
 const mMes=mediciones.filter(m=>m.fecha.startsWith(mes));
-document.getElementById('stats-cards').innerHTML=`
-<div class="stat-card elec"><div class="stat-icon">&#9889;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Electricidad').length}</div><div class="stat-label">Materiales Electricos</div></div>
-<div class="stat-card font"><div class="stat-icon">&#128167;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Fontaneria').length}</div><div class="stat-label">Materiales Fontaneria</div></div>
-<div class="stat-card clim"><div class="stat-icon">&#127777;&#65039;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Calefaccion').length}</div><div class="stat-label">Materiales Calefaccion</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#29B6F6,#4FC3F7)"><div class="stat-icon">&#9729;&#65039;</div><div class="stat-value">${materials.filter(m=>m.categoria==='Climatizacion').length}</div><div class="stat-label">Materiales Climatizacion</div></div>
-<div class="stat-card pci"><div class="stat-icon">&#128293;</div><div class="stat-value">${materials.filter(m=>m.categoria==='PCI').length}</div><div class="stat-label">Materiales PCI</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE)"><div class="stat-icon">&#127970;</div><div class="stat-value">${empresas.length}</div><div class="stat-label">Empresas Instaladoras</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#FF7043,#FFAB91)"><div class="stat-icon">&#128205;</div><div class="stat-value">${zonas.length}</div><div class="stat-label">Zonas</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>`;
 const qa=[
 {icon:'&#127959;',n:'Obras',d:'Gestion de obras',c:obras.length,g:'linear-gradient(135deg,#78909C,#90A4AE)',p:'obras'},
 {icon:'&#128205;',n:'Zonas',d:'Gestion de zonas',c:zonas.length,g:'linear-gradient(135deg,#FF7043,#FFAB91)',p:'zonas'},
@@ -1562,18 +1541,6 @@ const qa=[
 {icon:'&#128196;',n:'Reportes',d:'Exportacion / PDF',c:mediciones.length,g:'linear-gradient(135deg,#29B6F6,#4FC3F7)',p:'reportes'}
 ];
 document.getElementById('quick-cards').innerHTML=qa.map(x=>`<div class="stat-card" style="background:${x.g};cursor:pointer" onclick="showPage('${x.p}')" title="${x.d}"><div class="stat-icon">${x.icon}</div><div class="stat-value">${x.c}</div><div class="stat-label">${x.n}</div></div>`).join('');
-const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
-document.getElementById('recent-list').innerHTML=recent.map(m=>{
-const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
-const matText=lines.map(l=>l.material+' ('+l.cantidad+' '+l.unidad+')').join(', ');
-return`<tr><td><strong>${getSerieStr(m.serie||0)}</strong><br><small>${m.fecha}</small></td><td style="font-size:.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis">${matText}</td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td></tr>`
-}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-light)">Sin datos</td></tr>';
-const cats=[{n:'Electricidad',c:'#4FC3F7'},{n:'Fontaneria',c:'#66BB6A'},{n:'Calefaccion',c:'#29B6F6'},{n:'Climatizacion',c:'#FFA726'},{n:'PCI',c:'#EF5350'}];
-const maxMat=Math.max(...cats.map(c=>materials.filter(m=>m.categoria===c.n).length),1);
-document.getElementById('cat-bars').innerHTML=cats.map(c=>{
-const count=materials.filter(m=>m.categoria===c.n).length;
-const pct=Math.round((count/maxMat)*100);
-return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="width:80px;font-size:.8rem">${c.n}</span><div style="flex:1;height:24px;background:#E1F5FE;border-radius:12px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c.c};border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:600">${count}</div></div></div>`}).join('');
 }
 
 function renderEstadisticas(){
