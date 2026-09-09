@@ -242,16 +242,7 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div class="grid grid-5" id="stats-cards"></div>
 <div style="margin-top:20px">
 <h3 style="color:var(--primary-dark);margin-bottom:12px">&#128279; Accesos Rapidos</h3>
-<div class="grid grid-4">
-<div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE);cursor:pointer" onclick="showPage('obras')"><div class="stat-icon">&#127959;</div><div class="stat-value">Obras</div><div class="stat-label">Gestion de obras</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#FF7043,#FFAB91);cursor:pointer" onclick="showPage('zonas')"><div class="stat-icon">&#128205;</div><div class="stat-value">Zonas</div><div class="stat-label">Gestion de zonas</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#78909C,#90A4AE);cursor:pointer" onclick="showPage('empresas')"><div class="stat-icon">&#127970;</div><div class="stat-value">Empresas</div><div class="stat-label">Instaladoras</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8);cursor:pointer" onclick="showPage('subcontratas')"><div class="stat-icon">&#128188;</div><div class="stat-value">Subcontratas</div><div class="stat-label">Gestion de subcontratas</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#29B6F6,#4FC3F7);cursor:pointer" onclick="showPage('materiales')"><div class="stat-icon">&#128230;</div><div class="stat-value">Materiales</div><div class="stat-label">Base de datos</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC);cursor:pointer" onclick="showPage('mediciones')"><div class="stat-icon">&#128221;</div><div class="stat-value">Mediciones</div><div class="stat-label">Registro de mediciones</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#FF7043,#FFAB91);cursor:pointer" onclick="showPage('estadisticas')"><div class="stat-icon">&#128200;</div><div class="stat-value">Estadisticas</div><div class="stat-label">Graficos y datos</div></div>
-<div class="stat-card" style="background:linear-gradient(135deg,#29B6F6,#4FC3F7);cursor:pointer" onclick="showPage('reportes')"><div class="stat-icon">&#128196;</div><div class="stat-value">Reportes</div><div class="stat-label">Exportacion / PDF</div></div>
-</div>
+<div class="grid grid-4" id="quick-cards"></div>
 </div>
 <div class="grid grid-2" style="margin-top:20px">
 <div class="card">
@@ -1560,6 +1551,17 @@ document.getElementById('stats-cards').innerHTML=`
 <div class="stat-card" style="background:linear-gradient(135deg,#AB47BC,#CE93D8)"><div class="stat-icon">&#127959;</div><div class="stat-value">${obras.length}</div><div class="stat-label">Obras</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#FF7043,#FFAB91)"><div class="stat-icon">&#128205;</div><div class="stat-value">${zonas.length}</div><div class="stat-label">Zonas</div></div>
 <div class="stat-card" style="background:linear-gradient(135deg,#8E24AA,#AB47BC)"><div class="stat-icon">&#128221;</div><div class="stat-value">${mediciones.length}</div><div class="stat-label">Total Mediciones</div></div>`;
+const qa=[
+{icon:'&#127959;',n:'Obras',d:'Gestion de obras',c:obras.length,g:'linear-gradient(135deg,#78909C,#90A4AE)',p:'obras'},
+{icon:'&#128205;',n:'Zonas',d:'Gestion de zonas',c:zonas.length,g:'linear-gradient(135deg,#FF7043,#FFAB91)',p:'zonas'},
+{icon:'&#127970;',n:'Empresas',d:'Instaladoras',c:empresas.length,g:'linear-gradient(135deg,#78909C,#90A4AE)',p:'empresas'},
+{icon:'&#128188;',n:'Subcontratas',d:'Gestion de subcontratas',c:subcontratas.length,g:'linear-gradient(135deg,#AB47BC,#CE93D8)',p:'subcontratas'},
+{icon:'&#128230;',n:'Materiales',d:'Base de datos',c:materials.length,g:'linear-gradient(135deg,#29B6F6,#4FC3F7)',p:'materiales'},
+{icon:'&#128221;',n:'Mediciones',d:'Registro de mediciones',c:mediciones.length,g:'linear-gradient(135deg,#8E24AA,#AB47BC)',p:'mediciones'},
+{icon:'&#128200;',n:'Estadisticas',d:'Graficos y datos',c:mMes.length,g:'linear-gradient(135deg,#FF7043,#FFAB91)',p:'estadisticas'},
+{icon:'&#128196;',n:'Reportes',d:'Exportacion / PDF',c:mediciones.length,g:'linear-gradient(135deg,#29B6F6,#4FC3F7)',p:'reportes'}
+];
+document.getElementById('quick-cards').innerHTML=qa.map(x=>`<div class="stat-card" style="background:${x.g};cursor:pointer" onclick="showPage('${x.p}')" title="${x.d}"><div class="stat-icon">${x.icon}</div><div class="stat-value">${x.c}</div><div class="stat-label">${x.n}</div></div>`).join('');
 const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,8);
 document.getElementById('recent-list').innerHTML=recent.map(m=>{
 const lines=m.lineas||(m.materialId?[{material:m.material,cantidad:m.cantidad,unidad:m.unidad}]:[]);
