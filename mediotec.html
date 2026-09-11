@@ -243,6 +243,16 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <h3 style="color:var(--primary-dark);margin-bottom:12px">&#128279; Accesos Rapidos</h3>
 <div class="grid grid-4" id="quick-cards"></div>
 </div>
+<div style="margin-top:25px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<h3 style="color:var(--primary-dark)">&#128221; Registro de Mediciones</h3>
+<button class="btn btn-primary" onclick="showPage('mediciones')" style="padding:6px 14px;font-size:.8rem">Ver todas</button>
+</div>
+<div class="table-wrap">
+<table><thead><tr><th>N&ordm;</th><th>Fecha</th><th>Empresa</th><th>Obra</th><th>Zona</th><th>Materiales</th><th>Acciones</th></tr></thead>
+<tbody id="dash-mediciones-list"></tbody></table>
+</div>
+</div>
 </div>
 
 <!-- OBRAS -->
@@ -1541,7 +1551,17 @@ const qa=[
 {icon:'&#128196;',n:'Reportes',d:'Exportacion / PDF',c:mediciones.length,g:'linear-gradient(135deg,#29B6F6,#4FC3F7)',p:'reportes'}
 ];
 document.getElementById('quick-cards').innerHTML=qa.map(x=>`<div class="stat-card" style="background:${x.g};cursor:pointer" onclick="showPage('${x.p}')" title="${x.d}"><div class="stat-icon">${x.icon}</div><div class="stat-value">${x.c}</div><div class="stat-label">${x.n}</div></div>`).join('');
+const recent=[...mediciones].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,10);
+document.getElementById('dash-mediciones-list').innerHTML=recent.length?recent.map(m=>{
+const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
+const matNames=lines.map(l=>'<span style="font-size:.8rem">'+l.material+' <strong>'+l.cantidad+'</strong> '+l.unidad+'</span>').join('<br>');
+return`<tr>
+<td><span style="font-weight:700;color:var(--primary-dark)">N&ordm;${getSerieStr(m.serie||0)}</span><br><small style="color:var(--text-light)">${m.fecha}</small></td><td>${m.empresa||'-'}</td><td>${m.obra||'-'}</td><td>${m.zona||'-'}</td><td style="font-size:.8rem">${matNames}</td>
+<td><button class="btn btn-warning" onclick="dashEditMed('${m.id}')" style="padding:5px 10px;font-size:.75rem">E</button> <button class="btn btn-danger" onclick="dashDeleteMed('${m.id}')" style="padding:5px 10px;font-size:.75rem">X</button></td>
+</tr>`}).join(''):'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-light)">No hay mediciones registradas</td></tr>';
 }
+function dashEditMed(id){showPage('mediciones');setTimeout(function(){editMedicion(id)},100)}
+function dashDeleteMed(id){deleteMedicion(id);renderDashboard()}
 
 function renderEstadisticas(){
 const period=document.getElementById('stat-period').value;
