@@ -23,7 +23,7 @@ DB_PATH = os.environ.get('DB_PATH', '/var/lib/medicion-obra/medicion.db')
 AUTH_FILE = os.environ.get('AUTH_FILE', '/var/lib/medicion-obra/auth.json')
 HOST = os.environ.get('HOST', '0.0.0.0')
 PORT = int(os.environ.get('PORT', '80'))
-COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas', 'subcontratas']
+COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas', 'subcontratas', 'categorias']
 FB_API_KEY = 'AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y'
 FB_IDP = 'https://identitytoolkit.googleapis.com/v1/accounts:%s?key=' + FB_API_KEY
 

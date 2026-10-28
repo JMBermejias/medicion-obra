@@ -52,7 +52,7 @@ if sys.platform.startswith('linux'):
     EXE_NAME = 'medicion-obra.deb'
 else:
     EXE_NAME = 'MedicionObra.exe'
-COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas', 'subcontratas']
+COLLECTIONS = ['materials', 'mediciones', 'empresas', 'obras', 'zonas', 'subcontratas', 'categorias']
 FB_API_KEY = 'AIzaSyC5ykdqo7sP1of01Lm3wFYf6SuJdvbB62Y'
 FB_IDP = 'https://identitytoolkit.googleapis.com/v1/accounts:%s?key=' + FB_API_KEY
 
