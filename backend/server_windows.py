@@ -415,7 +415,16 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with open(bat, 'w') as f:
                     f.write(script)
-                os.startfile(bat)
+                if sys.platform.startswith('win'):
+                    os.startfile(bat)
+                else:
+                    # El batch de actualizacion esta pensado para Windows; en el resto
+                    # de plataformas no se puede lanzar, se informa para reiniciar a mano.
+                    self._send_json(200, {
+                        'ok': True,
+                        'message': 'Actualizacion descargada. En esta plataforma aplica la actualizacion reiniciando la aplicacion.',
+                    })
+                    return True
             except Exception as e:
                 self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
                 return True
