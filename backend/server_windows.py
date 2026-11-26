@@ -408,8 +408,11 @@ class Handler(BaseHTTPRequestHandler):
             if os.path.abspath(new) == os.path.abspath(target):
                 self._send_json(200, {'ok': True, 'message': 'La aplicacion ya esta actualizada.'})
                 return True
-            bat = os.path.join(UPDATES_DIR, 'apply_update.bat')
             write_update_status('PREPARANDO')
+            launcher = '/usr/bin/medicion-obra'
+            if not os.path.exists(launcher):
+                launcher = sys.executable
+            bat = os.path.join(UPDATES_DIR, 'apply_update.bat')
             script = (
                 '@echo off\r\n'
                 'title MedicionObra - Aplicando actualizacion...\r\n'
@@ -460,26 +463,65 @@ class Handler(BaseHTTPRequestHandler):
                 'exit\r\n'
             ) % {'exe': EXE_NAME, 'new': new, 'target': target, 'bat': bat,
                  'log': UPDATE_LOG_FILE, 'status': UPDATE_STATUS_FILE}
-            try:
-                with open(bat, 'w') as f:
-                    f.write(script)
-                if sys.platform.startswith('win'):
+            if sys.platform.startswith('win'):
+                try:
+                    with open(bat, 'w') as f:
+                        f.write(script)
                     # Proceso separado y consola propia: sobrevive a os._exit(0).
                     subprocess.Popen(['cmd.exe', '/c', bat],
                                      creationflags=subprocess.CREATE_NEW_CONSOLE,
                                      close_fds=True)
-                else:
-                    # El batch es exclusivo de Windows; en Linux se informa del reinicio manual.
-                    write_update_status('MANUAL')
-                    self._send_json(200, {
-                        'ok': True,
-                        'message': 'Actualizacion descargada. En esta plataforma aplica la actualizacion reiniciando la aplicacion.',
-                    })
+                except Exception as e:
+                    write_update_status('ERROR_LAUNCH')
+                    self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
                     return True
-            except Exception as e:
-                write_update_status('ERROR_LAUNCH')
-                self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
-                return True
+            else:
+                # Linux: instalar el .deb con permisos de administrador y relanzar la app.
+                sh = os.path.join(UPDATES_DIR, 'apply_update.sh')
+                sh_script = (
+                    '#!/bin/sh\n'
+                    'LOG="%(log)s"\n'
+                    'STATUS="%(status)s"\n'
+                    'DEB="%(new)s"\n'
+                    'LAUNCHER="%(launcher)s"\n'
+                    'echo "[$(date)] Inicio actualizacion Linux" > "$LOG"\n'
+                    'echo ESPERANDO > "$STATUS"\n'
+                    'sleep 3\n'
+                    'echo COPIANDO > "$STATUS"\n'
+                    'cp "$DEB" /tmp/medicion-obra-update.deb >> "$LOG" 2>&1\n'
+                    'DPKG=$(command -v dpkg)\n'
+                    'INSTALLED=0\n'
+                    'if [ "$(id -u)" = "0" ]; then\n'
+                    '  dpkg -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
+                    'elif command -v pkexec >/dev/null 2>&1 && [ -n "$DPKG" ] && '
+                    '{ [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; }; then\n'
+                    '  pkexec "$DPKG" -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
+                    'elif command -v sudo >/dev/null 2>&1 && [ -n "$DPKG" ]; then\n'
+                    '  sudo -n "$DPKG" -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
+                    'else\n'
+                    '  echo "No se pudo elevar permisos para instalar el .deb" >> "$LOG"\n'
+                    'fi\n'
+                    'if [ "$INSTALLED" != "1" ]; then\n'
+                    '  echo ERROR_INSTALL > "$STATUS"\n'
+                    '  exit 1\n'
+                    'fi\n'
+                    'echo REINICIANDO > "$STATUS"\n'
+                    'pkill -f medicion-obra-bin 2>/dev/null || true\n'
+                    'sleep 2\n'
+                    'nohup "$LAUNCHER" >/dev/null 2>&1 &\n'
+                    'sleep 5\n'
+                    'echo OK > "$STATUS"\n'
+                ) % {'log': UPDATE_LOG_FILE, 'status': UPDATE_STATUS_FILE,
+                     'new': new, 'launcher': launcher}
+                try:
+                    with open(sh, 'w') as f:
+                        f.write(sh_script)
+                    os.chmod(sh, 0o755)
+                    subprocess.Popen(['/bin/sh', sh], start_new_session=True, close_fds=True)
+                except Exception as e:
+                    write_update_status('ERROR_LAUNCH')
+                    self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
+                    return True
             # Respondemos primero y despues cerramos para no cortar la respuesta HTTP.
             self._send_json(200, {
                 'ok': True,
