@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import threading
 import time
@@ -44,6 +45,8 @@ APPDATA = appdata_dir()
 DB_PATH = os.path.join(APPDATA, 'medicion.db')
 AUTH_FILE = os.path.join(APPDATA, 'auth.json')
 UPDATES_DIR = os.path.join(APPDATA, 'updates')
+UPDATE_STATUS_FILE = os.path.join(UPDATES_DIR, 'update_status.txt')
+UPDATE_LOG_FILE = os.path.join(UPDATES_DIR, 'update_log.txt')
 HOST = '0.0.0.0'
 PORT = 8080
 GITHUB_REPO = 'JMBermejias/medicion-obra'
@@ -90,6 +93,32 @@ def get_app_version():
     except OSError:
         pass
     return '0'
+
+
+def write_update_status(text):
+    """Estado legible por el front-end mientras se aplica una actualizacion."""
+    try:
+        os.makedirs(UPDATES_DIR, exist_ok=True)
+        with open(UPDATE_STATUS_FILE, 'w') as f:
+            f.write(text)
+    except OSError:
+        pass
+
+
+def read_update_status():
+    try:
+        with open(UPDATE_STATUS_FILE, 'r') as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
+def read_update_log():
+    try:
+        with open(UPDATE_LOG_FILE, 'r', errors='replace') as f:
+            return ''.join(f.readlines()[-12:])
+    except OSError:
+        return ''
 
 
 def get_conn():
@@ -362,6 +391,7 @@ class Handler(BaseHTTPRequestHandler):
                             break
                         f.write(chunk)
                         size += len(chunk)
+                write_update_status('DESCARGADA')
                 self._send_json(200, {'ok': True, 'size': size})
             except Exception as e:
                 self._send_json(500, {'error': str(e)})
@@ -379,12 +409,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(200, {'ok': True, 'message': 'La aplicacion ya esta actualizada.'})
                 return True
             bat = os.path.join(UPDATES_DIR, 'apply_update.bat')
-            logf = os.path.join(UPDATES_DIR, 'update_log.txt')
+            write_update_status('PREPARANDO')
             script = (
                 '@echo off\r\n'
                 'title MedicionObra - Aplicando actualizacion...\r\n'
                 'set /a TRIES=0\r\n'
                 'echo [%%date%% %%time%%] Inicio actualizacion > "%(log)s"\r\n'
+                'echo ESPERANDO > "%(status)s"\r\n'
                 'echo Esperando cierre de %(exe)s >> "%(log)s"\r\n'
                 'ping -n 3 127.0.0.1 >NUL\r\n'
                 ':wait\r\n'
@@ -406,37 +437,63 @@ class Handler(BaseHTTPRequestHandler):
                 'ping -n 2 127.0.0.1 >NUL\r\n'
                 'goto wait2\r\n'
                 ':copyit\r\n'
+                'echo COPIANDO > "%(status)s"\r\n'
+                'set /a CTRIES=0\r\n'
+                ':copyloop\r\n'
                 'copy /Y "%(new)s" "%(target)s" >> "%(log)s" 2>&1\r\n'
-                'echo Copy exit code: %%errorlevel%% >> "%(log)s"\r\n'
+                'if not errorlevel 1 goto copied\r\n'
+                'set /a CTRIES+=1\r\n'
+                'if %%CTRIES%% GEQ 10 goto copyfail\r\n'
+                'ping -n 2 127.0.0.1 >NUL\r\n'
+                'goto copyloop\r\n'
+                ':copyfail\r\n'
+                'echo ERROR_NO_COPY > "%(status)s"\r\n'
+                'echo No se pudo reemplazar el ejecutable >> "%(log)s"\r\n'
+                'exit /b 1\r\n'
+                ':copied\r\n'
+                'echo Copia completada >> "%(log)s"\r\n'
+                'echo REINICIANDO > "%(status)s"\r\n'
                 'start "" "%(target)s"\r\n'
+                'ping -n 4 127.0.0.1 >NUL\r\n'
+                'echo OK > "%(status)s"\r\n'
                 'del /Q "%(bat)s" >NUL 2>&1\r\n'
                 'exit\r\n'
-            ) % {'exe': EXE_NAME, 'new': new, 'target': target, 'bat': bat, 'log': logf}
+            ) % {'exe': EXE_NAME, 'new': new, 'target': target, 'bat': bat,
+                 'log': UPDATE_LOG_FILE, 'status': UPDATE_STATUS_FILE}
             try:
                 with open(bat, 'w') as f:
                     f.write(script)
                 if sys.platform.startswith('win'):
-                    os.startfile(bat)
+                    # Proceso separado y consola propia: sobrevive a os._exit(0).
+                    subprocess.Popen(['cmd.exe', '/c', bat],
+                                     creationflags=subprocess.CREATE_NEW_CONSOLE,
+                                     close_fds=True)
                 else:
-                    # El batch de actualizacion esta pensado para Windows; en el resto
-                    # de plataformas no se puede lanzar, se informa para reiniciar a mano.
+                    # El batch es exclusivo de Windows; en Linux se informa del reinicio manual.
+                    write_update_status('MANUAL')
                     self._send_json(200, {
                         'ok': True,
                         'message': 'Actualizacion descargada. En esta plataforma aplica la actualizacion reiniciando la aplicacion.',
                     })
                     return True
             except Exception as e:
+                write_update_status('ERROR_LAUNCH')
                 self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
                 return True
-            threading.Timer(2.0, lambda: os._exit(0)).start()
+            # Respondemos primero y despues cerramos para no cortar la respuesta HTTP.
             self._send_json(200, {
                 'ok': True,
                 'message': 'Actualizacion aplicada. La aplicacion se cerrara y se volvera a abrir sola con la nueva version.',
             })
+            threading.Timer(2.0, lambda: os._exit(0)).start()
             return True
         if path == '/api/update/progress':
             new = os.path.join(UPDATES_DIR, EXE_NAME)
-            self._send_json(200, {'downloaded': os.path.exists(new)})
+            self._send_json(200, {
+                'downloaded': os.path.exists(new),
+                'status': read_update_status(),
+                'log': read_update_log(),
+            })
             return True
         return False
 

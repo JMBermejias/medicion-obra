@@ -974,19 +974,47 @@ function updateDownload(){
     }
   }).catch(()=>{info.textContent='Error de conexion durante la descarga';document.getElementById('upd-btn-download').disabled=false});
 }
+let _updateWatchTimer=null;
 function updateApply(){
   const info=document.getElementById('upd-info');
   info.textContent='Preparando la actualizacion...';
+  document.getElementById('upd-btn-apply').style.display='none';
   authFetch('/api/update/apply').then(r=>r.json().then(b=>({ok:r.ok,b}))).then(({ok,b})=>{
     if(ok){
-      info.textContent=b.message||'Cierra la aplicacion y ejecuta el nuevo archivo para actualizar.';
-      document.getElementById('upd-title').textContent='Actualizacion lista';
-      document.getElementById('upd-btn-apply').style.display='none';
-      document.getElementById('upd-btn-close').style.display='';
+      info.textContent=b.message||'Cerrando la aplicacion e instalando la nueva version...';
+      document.getElementById('upd-title').textContent='Actualizando...';
+      watchUpdateApply();
     }else{
       info.textContent='Error: '+(b.error||'');
+      document.getElementById('upd-btn-apply').style.display='';
     }
-  }).catch(()=>{info.textContent='Error al preparar la actualizacion'});
+  }).catch(()=>{info.textContent='Error al preparar la actualizacion';document.getElementById('upd-btn-apply').style.display=''});
+}
+function watchUpdateApply(){
+  const info=document.getElementById('upd-info');
+  const labels={DESCARGADA:'Descarga lista. Preparando la instalacion...',PREPARANDO:'Preparando la instalacion...',ESPERANDO:'Esperando a que se cierre la aplicacion...',COPIANDO:'Instalando la nueva version...',REINICIANDO:'Reiniciando la aplicacion...',OK:'Actualizacion completada. Recargando...',MANUAL:'Actualizacion descargada. Cierre y abra la aplicacion para aplicarla.',ERROR_NO_COPY:'No se pudo reemplazar el ejecutable. Compruebe los permisos de la carpeta de la aplicacion.',ERROR_LAUNCH:'No se pudo lanzar el actualizador.'};
+  let tries=0;
+  if(_updateWatchTimer)clearInterval(_updateWatchTimer);
+  _updateWatchTimer=setInterval(function(){
+    tries++;
+    authFetch('/api/update/progress').then(r=>r.json()).then(p=>{
+      const s=String((p&&p.status)||'').trim();
+      if(labels[s])info.textContent=labels[s];
+      if(s==='ERROR_NO_COPY'||s==='ERROR_LAUNCH'||s==='MANUAL')finishUpdateWatch(labels[s],false);
+      if(s==='OK'||tries%4===0){
+        authFetch('/api/update/check').then(r=>r.json()).then(data=>{
+          if(data&&!data.offline&&!data.needs_update)finishUpdateWatch('Actualizacion completada. Recargando...',true);
+        }).catch(()=>{});
+      }
+    }).catch(()=>{});
+    if(tries>70)finishUpdateWatch('La aplicacion deberia reiniciarse sola. Si no ocurre, cierre y abra Medicion Obra manualmente.',false);
+  },1500);
+}
+function finishUpdateWatch(msg,reload){
+  if(!_updateWatchTimer)return;
+  clearInterval(_updateWatchTimer);_updateWatchTimer=null;
+  document.getElementById('upd-info').textContent=msg;
+  if(reload)setTimeout(function(){location.reload()},700);
 }
 function doCheckUpdate(){
   toast('Buscando actualizaciones...');
