@@ -409,9 +409,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(200, {'ok': True, 'message': 'La aplicacion ya esta actualizada.'})
                 return True
             write_update_status('PREPARANDO')
-            launcher = '/usr/bin/medicion-obra'
-            if not os.path.exists(launcher):
-                launcher = sys.executable
             bat = os.path.join(UPDATES_DIR, 'apply_update.bat')
             script = (
                 '@echo off\r\n'
@@ -476,43 +473,42 @@ class Handler(BaseHTTPRequestHandler):
                     self._send_json(500, {'error': 'No se pudo lanzar el actualizador: %s' % e})
                     return True
             else:
-                # Linux: instalar el .deb con permisos de administrador y relanzar la app.
+                # Linux: extraer el binario nuevo del .deb a una carpeta del usuario
+                # (sin sudo) y relanzar la aplicacion desde ahi.
                 sh = os.path.join(UPDATES_DIR, 'apply_update.sh')
+                appdir = APPDATA
+                bin_dest = os.path.join(appdir, 'medicion-obra-bin')
                 sh_script = (
                     '#!/bin/sh\n'
                     'LOG="%(log)s"\n'
                     'STATUS="%(status)s"\n'
                     'DEB="%(new)s"\n'
-                    'LAUNCHER="%(launcher)s"\n'
+                    'APPDIR="%(appdir)s"\n'
+                    'BIN="%(bin)s"\n'
                     'echo "[$(date)] Inicio actualizacion Linux" > "$LOG"\n'
                     'echo ESPERANDO > "$STATUS"\n'
                     'sleep 3\n'
                     'echo COPIANDO > "$STATUS"\n'
-                    'cp "$DEB" /tmp/medicion-obra-update.deb >> "$LOG" 2>&1\n'
-                    'DPKG=$(command -v dpkg)\n'
-                    'INSTALLED=0\n'
-                    'if [ "$(id -u)" = "0" ]; then\n'
-                    '  dpkg -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
-                    'elif command -v pkexec >/dev/null 2>&1 && [ -n "$DPKG" ] && '
-                    '{ [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; }; then\n'
-                    '  pkexec "$DPKG" -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
-                    'elif command -v sudo >/dev/null 2>&1 && [ -n "$DPKG" ]; then\n'
-                    '  sudo -n "$DPKG" -i /tmp/medicion-obra-update.deb >> "$LOG" 2>&1 && INSTALLED=1\n'
-                    'else\n'
-                    '  echo "No se pudo elevar permisos para instalar el .deb" >> "$LOG"\n'
-                    'fi\n'
-                    'if [ "$INSTALLED" != "1" ]; then\n'
+                    'rm -rf "$APPDIR/upd-tmp" && mkdir -p "$APPDIR/upd-tmp"\n'
+                    'if ! dpkg-deb -x "$DEB" "$APPDIR/upd-tmp" >> "$LOG" 2>&1; then\n'
                     '  echo ERROR_INSTALL > "$STATUS"\n'
                     '  exit 1\n'
                     'fi\n'
+                    'if [ ! -f "$APPDIR/upd-tmp/usr/bin/medicion-obra-bin" ]; then\n'
+                    '  echo ERROR_INSTALL > "$STATUS"\n'
+                    '  exit 1\n'
+                    'fi\n'
+                    'cp "$APPDIR/upd-tmp/usr/bin/medicion-obra-bin" "$BIN" >> "$LOG" 2>&1\n'
+                    'chmod +x "$BIN"\n'
+                    'rm -rf "$APPDIR/upd-tmp"\n'
                     'echo REINICIANDO > "$STATUS"\n'
                     'pkill -f medicion-obra-bin 2>/dev/null || true\n'
                     'sleep 2\n'
-                    'nohup "$LAUNCHER" >/dev/null 2>&1 &\n'
+                    'nohup "$BIN" >/dev/null 2>&1 &\n'
                     'sleep 5\n'
                     'echo OK > "$STATUS"\n'
                 ) % {'log': UPDATE_LOG_FILE, 'status': UPDATE_STATUS_FILE,
-                     'new': new, 'launcher': launcher}
+                     'new': new, 'appdir': appdir, 'bin': bin_dest}
                 try:
                     with open(sh, 'w') as f:
                         f.write(sh_script)

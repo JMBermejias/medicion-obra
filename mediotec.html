@@ -992,7 +992,7 @@ function updateApply(){
 }
 function watchUpdateApply(){
   const info=document.getElementById('upd-info');
-  const labels={DESCARGADA:'Descarga lista. Preparando la instalacion...',PREPARANDO:'Preparando la instalacion...',ESPERANDO:'Esperando a que se cierre la aplicacion...',COPIANDO:'Instalando la nueva version...',REINICIANDO:'Reiniciando la aplicacion...',OK:'Actualizacion completada. Recargando...',MANUAL:'Actualizacion descargada. Cierre y abra la aplicacion para aplicarla.',ERROR_NO_COPY:'No se pudo reemplazar el ejecutable. Compruebe los permisos de la carpeta de la aplicacion.',ERROR_INSTALL:'No se pudo instalar la actualizacion (se necesitan permisos de administrador). Revise el log del actualizador.',ERROR_LAUNCH:'No se pudo lanzar el actualizador.'};
+  const labels={DESCARGADA:'Descarga lista. Preparando la instalacion...',PREPARANDO:'Preparando la instalacion...',ESPERANDO:'Esperando a que se cierre la aplicacion...',COPIANDO:'Instalando la nueva version...',REINICIANDO:'Reiniciando la aplicacion...',OK:'Actualizacion completada. Recargando...',MANUAL:'Actualizacion descargada. Cierre y abra la aplicacion para aplicarla.',ERROR_NO_COPY:'No se pudo reemplazar el ejecutable. Compruebe los permisos de la carpeta de la aplicacion.',ERROR_INSTALL:'No se pudo instalar la nueva version. Revise el log del actualizador en updates/update_log.txt.',ERROR_LAUNCH:'No se pudo lanzar el actualizador.'};
   let tries=0;
   if(_updateWatchTimer)clearInterval(_updateWatchTimer);
   _updateWatchTimer=setInterval(function(){
