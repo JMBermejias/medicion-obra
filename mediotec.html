@@ -620,7 +620,8 @@ tr:hover{background:rgba(79,195,247,0.05)}
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
 <select id="med-material" style="flex:1;min-width:180px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:.85rem"></select>
 <input type="number" id="med-cantidad" step="0.01" min="0" placeholder="Cantidad" style="width:90px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:.85rem">
-<button class="btn btn-success" onclick="addMedicionLine()" style="white-space:nowrap;padding:8px 14px">+ Agregar</button>
+<button id="med-add-line-btn" class="btn btn-success" onclick="addMedicionLine()" style="white-space:nowrap;padding:8px 14px">+ Agregar</button>
+<button id="med-cancel-line-edit" class="btn btn-outline" onclick="cancelMedLineEdit()" style="display:none;white-space:nowrap;padding:8px 14px">Cancelar edicion</button>
 </div>
 </div>
 <div id="med-lineas" style="max-height:200px;overflow-y:auto;margin-bottom:10px"></div>
@@ -648,6 +649,7 @@ let obras = JSON.parse(localStorage.getItem('obras_data') || '[]');
 let zonas = JSON.parse(localStorage.getItem('zonas_data') || '[]');
 let subcontratas = JSON.parse(localStorage.getItem('sub_data') || '[]');
 let tempMedicionLineas = [];
+let medLineEditIdx = -1;
 let medSerieCounter = parseInt(localStorage.getItem('med_serie_counter') || '0');
 let _syncing=false;let _ready=false;
 let _fbConnected=false;
@@ -1030,7 +1032,7 @@ if(id==='estadisticas')renderEstadisticas();
 }
 
 function openModal(id){document.getElementById(id).classList.add('show')}
-function closeModal(id){document.getElementById(id).classList.remove('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show');if(id==='modal-medicion')resetMedLineEdit(true)}
 
 function openEmpresaModal(id){
 document.getElementById('emp-edit-id').value='';
@@ -1481,6 +1483,7 @@ document.getElementById('med-cantidad').value='';
 document.getElementById('med-obs').value='';
 document.getElementById('med-mat-search').value='';
 tempMedicionLineas=[];
+resetMedLineEdit(true);
 populateCategoriaSelects();
 populateEmpresaSelect('med-empresa');
 populateObraSelect('med-obra');
@@ -1529,25 +1532,91 @@ document.getElementById('med-material').value=m.id;
 document.getElementById('med-cantidad').focus();
 }
 
+function medLineSetValue(id,v){const el=document.getElementById(id);if(el)el.value=v}
+function medLineGetValue(id){const el=document.getElementById(id);return el?el.value:''}
+
+function clearMedLineForm(){
+medLineSetValue('med-cantidad','');
+medLineSetValue('med-mat-search','');
+const results=document.getElementById('med-mat-results');if(results)results.classList.remove('show');
+}
+function setMedLineEditUI(){
+const editing=medLineEditIdx>=0;
+const add=document.getElementById('med-add-line-btn');
+if(add){add.textContent=editing?'Guardar cambios':'+ Agregar';add.className=editing?'btn btn-primary':'btn btn-success'}
+const cancel=document.getElementById('med-cancel-line-edit');
+if(cancel)cancel.style.display=editing?'':'none';
+}
+function resetMedLineEdit(clearForm){
+medLineEditIdx=-1;
+if(clearForm)clearMedLineForm();
+setMedLineEditUI();
+}
+function cancelMedLineEdit(){
+resetMedLineEdit(true);
+renderTempMedLineas();
+}
+function editMedLine(idx){
+const l=tempMedicionLineas[idx];if(!l)return;
+medLineEditIdx=idx;
+const catSel=document.getElementById('med-cat');
+if(catSel){
+const val=l.categoria||'';
+if(val&&!Array.from(catSel.options).some(o=>o.value===val)){
+const opt=document.createElement('option');opt.value=val;opt.textContent=val;catSel.appendChild(opt);
+}
+catSel.value=val;
+}
+filterMaterialsForMedicion();
+const matSel=document.getElementById('med-material');
+if(matSel){
+let id=l.materialId||'';
+if(!materials.some(m=>m.id===id)){
+const m=materials.find(m=>m.nombre===(l.material||''));
+if(m)id=m.id;
+}
+matSel.value=id||'';
+}
+medLineSetValue('med-cantidad',l.cantidad);
+medLineSetValue('med-mat-search','');
+const results=document.getElementById('med-mat-results');if(results)results.classList.remove('show');
+setMedLineEditUI();
+renderTempMedLineas();
+const cant=document.getElementById('med-cantidad');if(cant)cant.focus();
+}
 function addMedicionLine(){
-const materialId=document.getElementById('med-material').value;
-const cantidad=parseFloat(document.getElementById('med-cantidad').value);
+const materialId=medLineGetValue('med-material');
+const cantidad=parseFloat(medLineGetValue('med-cantidad'));
 if(!materialId||!cantidad||cantidad<=0){alert('Selecciona un material y cantidad valida');return}
 const mat=materials.find(m=>m.id===materialId);
-tempMedicionLineas.push({materialId:mat.id,material:mat.nombre,categoria:mat.categoria,unidad:mat.unidad,cantidad});
-document.getElementById('med-cantidad').value='';
-document.getElementById('med-mat-search').value='';
+if(!mat){alert('Selecciona un material valido');return}
+const line={materialId:mat.id,material:mat.nombre,categoria:mat.categoria,unidad:mat.unidad,cantidad};
+const editing=medLineEditIdx>=0&&medLineEditIdx<tempMedicionLineas.length;
+if(editing)tempMedicionLineas[medLineEditIdx]=line;else tempMedicionLineas.push(line);
+resetMedLineEdit(true);
 renderTempMedLineas();
+if(editing)toast('Linea actualizada');
 }
 
 function removeTempMedLine(idx){
 tempMedicionLineas.splice(idx,1);
+if(medLineEditIdx===idx)resetMedLineEdit(true);
+else if(medLineEditIdx>idx)medLineEditIdx--;
+setMedLineEditUI();
 renderTempMedLineas();
 }
 
 function renderTempMedLineas(){
 const container=document.getElementById('med-lineas');
-container.innerHTML=tempMedicionLineas.length?`<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr style="background:var(--primary);color:#fff"><th style="padding:6px 8px;text-align:left">Material</th><th style="padding:6px 8px">Cat.</th><th style="padding:6px 8px">Cant.</th><th style="padding:6px 8px">Unidad</th><th style="padding:6px 8px">X</th></tr></thead><tbody>${tempMedicionLineas.map((l,i)=>{const mat=materials.find(x=>x.id===l.materialId);const imgSrc=mat?getMaterialImg(mat):'';return`<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px"><div style="display:flex;align-items:center;gap:8px">${imgSrc?'<img src="'+imgSrc+'" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0" loading="lazy">':''}${l.material}</div></td><td style="padding:5px 8px;text-align:center"><span class="tag ${tagCatClass(l.categoria)}">${l.categoria}</span></td><td style="padding:5px 8px;text-align:center">${l.cantidad}</td><td style="padding:5px 8px;text-align:center">${l.unidad}</td><td style="padding:5px 8px;text-align:center"><button class="btn btn-danger" onclick="removeTempMedLine(${i})" style="padding:2px 6px;font-size:.65rem">X</button></td></tr>`}).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-light);padding:10px;font-size:.8rem">Agrega materiales usando el buscador o el selector</p>';
+const th='<th style="padding:6px 8px;text-align:left">Material</th><th style="padding:6px 8px">Cat.</th><th style="padding:6px 8px">Cant.</th><th style="padding:6px 8px">Unidad</th><th style="padding:6px 8px">Acciones</th>';
+const rows=tempMedicionLineas.map((l,i)=>{
+const mat=materials.find(x=>x.id===l.materialId);
+const imgSrc=mat?getMaterialImg(mat):'';
+const editing=medLineEditIdx===i;
+return`<tr style="border-bottom:1px solid var(--border)${editing?';background:#FFF8E1':''}"><td style="padding:5px 8px"><div style="display:flex;align-items:center;gap:8px">${imgSrc?'<img src="'+imgSrc+'" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0" loading="lazy">':''}${l.material}</div></td><td style="padding:5px 8px;text-align:center"><span class="tag ${tagCatClass(l.categoria)}">${l.categoria}</span></td><td style="padding:5px 8px;text-align:center">${l.cantidad}</td><td style="padding:5px 8px;text-align:center">${l.unidad}</td><td style="padding:5px 8px;text-align:center;white-space:nowrap"><button class="btn btn-primary" onclick="editMedLine(${i})" title="Editar linea" style="padding:2px 6px;font-size:.65rem">Editar</button> <button class="btn btn-danger" onclick="removeTempMedLine(${i})" title="Eliminar linea" style="padding:2px 6px;font-size:.65rem">X</button></td></tr>`
+}).join('');
+container.innerHTML=tempMedicionLineas.length?`<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr style="background:var(--primary);color:#fff">${th}</tr></thead><tbody>${rows}</tbody></table>`:'<p style="text-align:center;color:var(--text-light);padding:10px;font-size:.8rem">Agrega materiales usando el buscador o el selector</p>';
+setMedLineEditUI();
 }
 
 function editMedicion(id){
@@ -1568,6 +1637,7 @@ filterMaterialsForMedicion();
 const lines=m.lineas||(m.materialId?[{materialId:m.materialId,material:m.material,categoria:m.categoria,unidad:m.unidad,cantidad:m.cantidad}]:[]);
 tempMedicionLineas=lines.map(l=>({...l}));
 document.getElementById('med-obs').value=m.obs||'';
+resetMedLineEdit(true);
 renderTempMedLineas();
 openModal('modal-medicion');
 }
